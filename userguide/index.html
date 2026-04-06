@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>UserGuide.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="worklog--user-guide">WorkLog — User Guide</h1>
+<blockquote>
+<p>Your personal work task manager. Capture tasks, track progress, build habits.<br>
+Works in any browser. Your data stays on your machine — private and secure.</p>
+</blockquote>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#getting-started">Getting Started</a></li>
+<li><a href="#the-sidebar">The Sidebar</a></li>
+<li><a href="#your-xp--level-badge">Your XP &amp; Level Badge</a></li>
+<li><a href="#views">Views — Where Your Work Lives</a>
+<ul>
+<li><a href="#worklog-inbox">WorkLog Inbox</a></li>
+<li><a href="#today">Today</a></li>
+<li><a href="#upcoming">Upcoming</a></li>
+<li><a href="#sticky-notes">Sticky Notes</a></li>
+<li><a href="#calendar">Calendar</a></li>
+<li><a href="#my-progress">My Progress</a></li>
+<li><a href="#completed">Completed</a></li>
+</ul>
+</li>
+<li><a href="#adding--editing-tasks">Adding &amp; Editing Tasks</a></li>
+<li><a href="#completing-tasks--earning-xp">Completing Tasks &amp; Earning XP</a></li>
+<li><a href="#search">Search</a></li>
+<li><a href="#celebration-sounds">Celebration Sounds</a></li>
+<li><a href="#themes">Themes</a></li>
+<li><a href="#settings">Settings</a>
+<ul>
+<li><a href="#custom-app-name">Custom App Name</a></li>
+<li><a href="#focus-mode">Focus Mode</a></li>
+<li><a href="#hiding-categories">Hiding Categories</a></li>
+<li><a href="#show--hide-features">Show / Hide Features</a></li>
+</ul>
+</li>
+<li><a href="#keyboard-shortcuts">Keyboard Shortcuts</a></li>
+<li><a href="#backing-up-your-data">Backing Up Your Data</a></li>
+<li><a href="#using-on-multiple-computers">Using on Multiple Computers</a></li>
+<li><a href="#sharing-worklog-with-others">Sharing WorkLog with Others</a></li>
+<li><a href="#tips--best-practices">Tips &amp; Best Practices</a></li>
+<li><a href="#frequently-asked-questions">Frequently Asked Questions</a></li>
+</ol>
+<hr>
+<h2 id="getting-started">Getting Started</h2>
+<p>WorkLog is a single <code>.html</code> file. There is nothing to install.</p>
+<p><strong>To open WorkLog:</strong></p>
+<ol>
+<li>Save <code>WorkLog.html</code> to your computer (Desktop, Downloads, anywhere)</li>
+<li>Double-click the file — it opens in your default browser</li>
+<li>Or go to the hosted URL if someone has shared a link with you</li>
+</ol>
+<p>That is it. WorkLog opens instantly and you can start adding tasks straight away.</p>
+<blockquote>
+<p><strong>Your data is saved automatically.</strong> Everything you add, edit, or complete is saved in your browser as you go. You do not need to press Save or sync anything.</p>
+</blockquote>
+<hr>
+<h2 id="the-sidebar">The Sidebar</h2>
+<p>The sidebar on the left is your navigation hub. It contains:</p>
+<ul>
+<li><strong>Your app name and badge</strong> — shows your current level and XP progress</li>
+<li><strong>WorkLog List</strong> — the 7 main views</li>
+<li><strong>Categories</strong> — quick access to filter by category</li>
+<li><strong>Sound toggle</strong> — mute/unmute celebration sounds</li>
+<li><strong>Export / Import</strong> — backup and restore your data</li>
+<li><strong>Settings gear (⚙️)</strong> — open the settings panel</li>
+</ul>
+<p>You can <strong>collapse the sidebar</strong> by clicking the ☰ menu button in the top bar, or pressing <code>B</code> on your keyboard. This gives you more space when you want to focus on your tasks.</p>
+<hr>
+<h2 id="your-xp--level-badge">Your XP &amp; Level Badge</h2>
+<p>Just below the app name in the sidebar, you will see a small card showing:</p>
+<ul>
+<li><strong>Your badge and level title</strong> — e.g. 🔥 On Fire</li>
+<li><strong>Your total XP</strong> — points earned by completing tasks</li>
+<li><strong>Your streak</strong> — how many days in a row you have completed at least one task</li>
+<li><strong>A progress bar</strong> — showing how far you are to the next level</li>
+</ul>
+<p>This updates every time you complete a task. See <a href="#my-progress">My Progress</a> for the full stats dashboard.</p>
+<h3 id="the-7-levels">The 7 levels</h3>
+<table>
+<thead>
+<tr>
+<th>Badge</th>
+<th>Level</th>
+<th>XP Needed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🌱</td>
+<td>Beginner</td>
+<td>0 XP</td>
+</tr>
+<tr>
+<td>⚡</td>
+<td>Getting Started</td>
+<td>100 XP</td>
+</tr>
+<tr>
+<td>🔥</td>
+<td>On Fire</td>
+<td>300 XP</td>
+</tr>
+<tr>
+<td>🎯</td>
+<td>Focused</td>
+<td>600 XP</td>
+</tr>
+<tr>
+<td>🏆</td>
+<td>Champion</td>
+<td>1,000 XP</td>
+</tr>
+<tr>
+<td>💎</td>
+<td>Elite</td>
+<td>2,000 XP</td>
+</tr>
+<tr>
+<td>🚀</td>
+<td>Legend</td>
+<td>5,000 XP</td>
+</tr>
+</tbody>
+</table>
+<p>When you reach a new level, a toast notification appears at the bottom of the screen and a special fanfare sound plays.</p>
+<hr>
+<h2 id="views">Views</h2>
+<p>WorkLog has 7 views, each showing a different slice of your tasks. Switch between them by clicking in the sidebar or pressing keys <code>1</code> through <code>7</code>.</p>
+<hr>
+<h3 id="worklog-inbox">WorkLog Inbox</h3>
+<p><strong>Key: <code>1</code></strong></p>
+<p>Your default home view. Shows all open (not completed) tasks.</p>
+<p><strong>Filtering by category:</strong> At the top of the Inbox you will see filter chips — All, Meetings, Change Request, Incident, and so on. Click any chip to filter to just that category. Click <strong>All</strong> to show everything again.</p>
+<p><strong>Task count badges</strong> appear next to each category chip if there are tasks in that category.</p>
+<p>Use the Inbox to get a full picture of everything on your plate right now.</p>
+<hr>
+<h3 id="today">Today</h3>
+<p><strong>Key: <code>2</code></strong></p>
+<p>Shows only tasks with a due date of today. Use this view to focus on what needs to be done right now.</p>
+<p>If this view is empty, you have nothing due today — great!</p>
+<hr>
+<h3 id="upcoming">Upcoming</h3>
+<p><strong>Key: <code>3</code></strong></p>
+<p>Shows all open tasks with a due date in the future, sorted by date with the nearest due date first. Tasks are grouped by date with a date header above each group.</p>
+<p>Use this view for planning ahead and seeing what is coming up over the next days and weeks.</p>
+<hr>
+<h3 id="sticky-notes">Sticky Notes</h3>
+<p><strong>Key: <code>4</code></strong></p>
+<p>Shows your open tasks as physical-looking sticky notes pinned to a board. Each note is colour coded by priority:</p>
+<ul>
+<li>🔴 <strong>Red</strong> — High priority</li>
+<li>🟡 <strong>Yellow</strong> — Medium priority</li>
+<li>🟢 <strong>Light yellow</strong> — Low priority</li>
+</ul>
+<p>Each sticky note shows the task title (in italic), the category, and the due date.</p>
+<p><strong>Overdue tasks</strong> are highlighted in the note's date area.</p>
+<p><strong>Click any sticky note</strong> to open and edit the task.</p>
+<p><strong>Sorting:</strong> At the top of the view, choose between:</p>
+<ul>
+<li><strong>🎯 Priority</strong> — High tasks first, then Medium, then Low. Within each priority, sorted by due date.</li>
+<li><strong>📅 Due Date</strong> — Nearest due date first. Tasks without a due date appear last.</li>
+</ul>
+<hr>
+<h3 id="calendar">Calendar</h3>
+<p><strong>Key: <code>5</code></strong></p>
+<p>A calendar view of your tasks. Has two display modes, toggled by the buttons in the top right:</p>
+<p><strong>📅 Month view</strong></p>
+<p>A full month grid. Each day cell shows:</p>
+<ul>
+<li>The day number (today is highlighted with a coloured circle)</li>
+<li>Up to 2 task pills showing task titles, colour coded by priority</li>
+<li>A &quot;+N more&quot; count if there are more than 2 tasks on that day</li>
+</ul>
+<p>Click any day cell to add a new task with that date automatically set as the due date.<br>
+Click any task pill to open and edit that task.</p>
+<p><strong>⊟ Split view</strong></p>
+<p>The calendar splits into two panels:</p>
+<ul>
+<li><strong>Left panel</strong> — Three mini calendars showing the current month, next month, and the month after. Dates that have tasks show a small coloured dot underneath. Click any date to add a task on that date.</li>
+<li><strong>Right panel</strong> — An upcoming task list grouped by date, showing all open tasks with due dates. Hover over any task to reveal a ✓ button to complete it.</li>
+</ul>
+<p>Use the ◀ and ▶ arrows to navigate months. Click <strong>Today</strong> to jump back to the current month.</p>
+<hr>
+<h3 id="my-progress">My Progress</h3>
+<p><strong>Key: <code>6</code></strong></p>
+<p>Your personal productivity dashboard. This is where you see the full picture of how you are doing.</p>
+<p><strong>Level &amp; XP card</strong> — Your current badge, level title, total XP, progress to the next level, and current streak.</p>
+<p><strong>Summary cards</strong> — Four quick stats: tasks completed this week, tasks completed this month, total completed all time, and total XP earned.</p>
+<p><strong>This week — daily bar chart</strong> — A bar chart showing how many tasks you completed on each day of the current week. Today is highlighted. Use this to spot which days you are most productive.</p>
+<p><strong>Activity — last 12 weeks heatmap</strong> — A grid of small squares, one per day, for the past 12 weeks. Darker squares mean more completions on that day, lighter squares mean fewer. Empty squares mean no completions. This gives you a visual habit trail — similar to a GitHub contribution graph.</p>
+<p><strong>This month by category</strong> — A bar chart showing which categories you have completed the most tasks in this month. Use this to understand where your time and energy is going.</p>
+<p><strong>How XP is earned</strong> — A reference table showing exactly how many points each action gives.</p>
+<hr>
+<h3 id="completed">Completed</h3>
+<p><strong>Key: <code>7</code></strong></p>
+<p>A list of all tasks you have marked as done. Completed tasks appear faded with a strikethrough. You can click ✎ to edit, or click the checkbox again to un-complete a task and move it back to the Inbox.</p>
+<p>This view can be hidden in Settings if you prefer a cleaner sidebar.</p>
+<hr>
+<h2 id="adding--editing-tasks">Adding &amp; Editing Tasks</h2>
+<h3 id="adding-a-new-task">Adding a new task</h3>
+<p>There are three ways:</p>
+<ol>
+<li>Click <strong>+ Add Item</strong> button in the top right</li>
+<li>Press <strong><code>N</code></strong> on your keyboard</li>
+<li>Click any day on the Calendar to add a task with that date pre-filled</li>
+</ol>
+<p>The Add Item modal opens with these fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Title</strong></td>
+<td>✅ Yes</td>
+<td>What the task is — describe it clearly</td>
+</tr>
+<tr>
+<td><strong>Category</strong></td>
+<td>✅ Yes</td>
+<td>Choose the work area (e.g. Meetings, Incident, GitHub)</td>
+</tr>
+<tr>
+<td><strong>Priority</strong></td>
+<td>✅ Yes</td>
+<td>High (🔴), Medium (🟡), or Low (🟢)</td>
+</tr>
+<tr>
+<td><strong>Due Date</strong></td>
+<td>Optional</td>
+<td>Pick from the custom calendar popup</td>
+</tr>
+<tr>
+<td><strong>Notes</strong></td>
+<td>Optional</td>
+<td>Any extra details, context, or links</td>
+</tr>
+</tbody>
+</table>
+<p>Press <strong>Ctrl + Enter</strong> (or <strong>Cmd + Enter</strong> on Mac) to save quickly without clicking the button.</p>
+<h3 id="editing-a-task">Editing a task</h3>
+<p>Click the <strong>✎ pencil icon</strong> on any task card to open the edit modal. All fields are editable. You can also delete the task from this modal.</p>
+<h3 id="the-custom-date-picker">The custom date picker</h3>
+<p>Clicking the Due Date field opens a calendar popup. Navigate months with ◀ ▶. Click a date to select it. Click <strong>Today</strong> to jump to today's date. Click <strong>Clear</strong> to remove the date.</p>
+<hr>
+<h2 id="completing-tasks--earning-xp">Completing Tasks &amp; Earning XP</h2>
+<p>Click the <strong>circle checkbox</strong> on the left of any task to mark it complete.</p>
+<p>When you complete a task:</p>
+<ol>
+<li>A <strong>celebration sound</strong> plays (if sounds are enabled)</li>
+<li>A <strong>+XP</strong> number floats up from the checkbox</li>
+<li>Your XP total and progress bar update immediately</li>
+<li>If you reach a new level, a <strong>level-up toast</strong> appears at the bottom</li>
+</ol>
+<p>The XP you earn depends on the priority:</p>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Base XP</th>
+<th>Completed on or before due date</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>High</td>
+<td>25 XP</td>
+<td>+15 bonus XP</td>
+</tr>
+<tr>
+<td>Medium</td>
+<td>10 XP</td>
+<td>+15 bonus XP</td>
+</tr>
+<tr>
+<td>Low</td>
+<td>5 XP</td>
+<td>+15 bonus XP</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Streak bonus:</strong> If you complete at least one task every day:</p>
+<ul>
+<li>3 days in a row → +50 bonus XP</li>
+<li>7 days in a row → +150 bonus XP</li>
+</ul>
+<p>To <strong>un-complete</strong> a task, click the filled checkbox again. The task returns to the Inbox. A soft descending tone plays to acknowledge the undo.</p>
+<hr>
+<h2 id="search">Search</h2>
+<p><strong>Open search:</strong> Press <code>Ctrl + K</code>, press <code>/</code>, or click the 🔍 Search button in the top bar.</p>
+<p>Type anything to search across task titles, categories, and notes. Results appear instantly as you type. Click any result to open and edit that task.</p>
+<p>When the search box is open but empty, it shows <strong>Quick Navigate</strong> links — click any view to jump there without typing.</p>
+<p>Press <code>Escape</code> to close search.</p>
+<hr>
+<h2 id="celebration-sounds">Celebration Sounds</h2>
+<p>WorkLog plays a short sound each time you complete a task. These sounds are designed to give your brain an immediate positive signal — the &quot;celebration&quot; step described in Tiny Habits and Atomic Habits.</p>
+<ul>
+<li><strong>High priority task</strong> → Triumphant 4-note ascending arpeggio</li>
+<li><strong>Medium priority task</strong> → Warm bell chime</li>
+<li><strong>Low priority task</strong> → Gentle soft two-tone</li>
+<li><strong>Level up</strong> → A 5-note fanfare</li>
+<li><strong>Undo complete</strong> → Soft descending tone</li>
+</ul>
+<h3 id="muting-sounds">Muting sounds</h3>
+<p>Toggle sounds on or off using the <strong>🔊 / 🔇 switch</strong> in the sidebar. Or press <strong><code>M</code></strong> on your keyboard.</p>
+<p>Your mute preference is saved automatically. If you are in the office and need silence, press <code>M</code> once. When you are working alone, press <code>M</code> to turn sounds back on.</p>
+<hr>
+<h2 id="themes">Themes</h2>
+<p>WorkLog has three built-in themes. Switch between them in <strong>Settings (⚙️)</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Theme</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Light</strong></td>
+<td>Clean white background — best in bright environments</td>
+</tr>
+<tr>
+<td><strong>Dark</strong></td>
+<td>Pure black — easy on the eyes in dark rooms</td>
+</tr>
+<tr>
+<td><strong>Soft Dark</strong></td>
+<td>Dark grey/purple tones — a softer dark option, comfortable for long sessions</td>
+</tr>
+</tbody>
+</table>
+<p>Your theme choice is saved automatically.</p>
+<hr>
+<h2 id="settings">Settings</h2>
+<p>Click <strong>⚙️</strong> in the sidebar or top bar to open the Settings panel. A drawer slides in from the right.</p>
+<h3 id="custom-app-name">Custom App Name</h3>
+<p>In the <strong>App Identity</strong> section:</p>
+<ul>
+<li><strong>App Name</strong> — Change &quot;WorkLog&quot; to anything you like, e.g. <em>&quot;Prabu's Tasks&quot;</em> or <em>&quot;AD Team WorkLog&quot;</em></li>
+<li><strong>Subtitle</strong> — Change &quot;Work Task Manager&quot; to something more personal, e.g. <em>&quot;Infosys EMEA — AD Team&quot;</em></li>
+</ul>
+<p>Your custom name appears in the sidebar header immediately after saving.</p>
+<p>You can also click directly on the <strong>⚡ WorkLog</strong> title or subtitle in the sidebar to open Settings quickly.</p>
+<h3 id="focus-mode">Focus Mode</h3>
+<p>Turn on <strong>Focus Mode</strong> to strip the sidebar down to just the WorkLog navigation list — no categories, no bottom buttons, no extras. The main content area gets more space and there are fewer distractions.</p>
+<p>Turn off Focus Mode to get the full sidebar back.</p>
+<h3 id="hiding-categories">Hiding Categories</h3>
+<p>In the <strong>Visible Categories</strong> section, each category has a toggle. Turn off any category you are not using — it disappears from the sidebar and from the filter chips in the Inbox.</p>
+<p>For example, if you do not use SharePoint, toggle it off. You can re-enable it any time.</p>
+<h3 id="show--hide-features">Show / Hide Features</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>What it controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Count badges</td>
+<td>The number badges on nav items and categories</td>
+</tr>
+<tr>
+<td>Celebration sounds</td>
+<td>Whether sounds play when completing tasks</td>
+</tr>
+<tr>
+<td>Focus mode</td>
+<td>Simplified sidebar (see above)</td>
+</tr>
+<tr>
+<td>Show import / export</td>
+<td>The backup buttons in the sidebar</td>
+</tr>
+<tr>
+<td>Show Completed view</td>
+<td>Whether the Completed view appears in the sidebar</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="keyboard-shortcuts">Keyboard Shortcuts</h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>N</code></td>
+<td>Add a new task</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>Go to WorkLog Inbox</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Go to Today</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td>Go to Upcoming</td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td>Go to Sticky Notes</td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td>Go to Calendar</td>
+</tr>
+<tr>
+<td><code>6</code></td>
+<td>Go to My Progress</td>
+</tr>
+<tr>
+<td><code>7</code></td>
+<td>Go to Completed</td>
+</tr>
+<tr>
+<td><code>B</code></td>
+<td>Toggle sidebar open / closed</td>
+</tr>
+<tr>
+<td><code>E</code></td>
+<td>Export backup JSON</td>
+</tr>
+<tr>
+<td><code>M</code></td>
+<td>Toggle sounds on / off</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td>Open search</td>
+</tr>
+<tr>
+<td><code>Ctrl + K</code></td>
+<td>Open search</td>
+</tr>
+<tr>
+<td><code>Ctrl + Enter</code></td>
+<td>Save task (when modal is open)</td>
+</tr>
+<tr>
+<td><code>?</code></td>
+<td>Show all keyboard shortcuts</td>
+</tr>
+<tr>
+<td><code>Escape</code></td>
+<td>Close any modal, search, or panel</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Shortcuts like <code>N</code>, <code>B</code>, <code>E</code>, <code>M</code> only fire when you are not typing in a text field.</p>
+</blockquote>
+<hr>
+<h2 id="backing-up-your-data">Backing Up Your Data</h2>
+<p>Your data is saved in your browser automatically, but your browser storage can be cleared (accidentally or intentionally). It is good practice to export a backup regularly.</p>
+<h3 id="how-to-export-a-backup">How to export a backup</h3>
+<ol>
+<li>Click <strong>⬇ Export Backup</strong> in the sidebar, or press <strong><code>E</code></strong></li>
+<li>A file named <code>worklog-backup-YYYY-MM-DD.json</code> is downloaded to your Downloads folder</li>
+<li>Keep this file somewhere safe — OneDrive, email it to yourself, or save to USB</li>
+</ol>
+<h3 id="how-to-import-a-backup">How to import a backup</h3>
+<ol>
+<li>Click <strong>⬆ Import Backup</strong> in the sidebar</li>
+<li>Select your <code>.json</code> backup file</li>
+<li>Your tasks, XP, and streak are restored</li>
+</ol>
+<blockquote>
+<p><strong>Warning:</strong> Importing replaces all current data. If you have tasks in the current browser that you want to keep, export them first before importing another backup.</p>
+</blockquote>
+<hr>
+<h2 id="using-on-multiple-computers">Using on Multiple Computers</h2>
+<p>WorkLog data lives in the browser where you use it. To work across computers:</p>
+<ol>
+<li><strong>On your current computer</strong> — Click <strong>⬇ Export Backup</strong> to download the JSON file</li>
+<li><strong>Copy the JSON file</strong> to the other computer (email, USB, OneDrive, etc.)</li>
+<li><strong>On the new computer</strong> — Open WorkLog, click <strong>⬆ Import Backup</strong>, select the JSON file</li>
+<li>Your tasks, XP, and streak are now on the new computer</li>
+</ol>
+<p>After that, keep both copies in sync by exporting regularly and importing on the other machine when needed.</p>
+<p>If WorkLog is hosted at a shared URL, you still need to use Export/Import to move data — the server does not store your data, only your browser does.</p>
+<hr>
+<h2 id="sharing-worklog-with-others">Sharing WorkLog with Others</h2>
+<h3 id="option-a--share-the-file">Option A — Share the file</h3>
+<p>Send the <code>WorkLog.html</code> file to someone. They open it in their browser. They get their own empty WorkLog — their data is completely separate from yours.</p>
+<h3 id="option-b--host-it-at-a-url">Option B — Host it at a URL</h3>
+<p>Upload <code>WorkLog.html</code> to a web hosting service (GitHub Pages, Netlify, Vercel, or any web server). Share the URL. Each person who opens the URL gets their own independent WorkLog stored in their own browser.</p>
+<h3 id="option-c--share-a-backup-of-your-tasks">Option C — Share a backup of your tasks</h3>
+<p>Export your tasks as JSON and send that file. The other person imports it into their WorkLog. They now have a copy of your task list, which they can work from independently.</p>
+<hr>
+<h2 id="tips--best-practices">Tips &amp; Best Practices</h2>
+<p><strong>Start with Inbox every morning</strong><br>
+Open WorkLog and go to the Inbox (<code>1</code>). Review what is open. Then switch to Today (<code>2</code>) to see what needs to happen today.</p>
+<p><strong>Use High priority sparingly</strong><br>
+If everything is High, nothing is. Reserve High for tasks that genuinely have consequences if not done today or this week.</p>
+<p><strong>Set due dates for accountability</strong><br>
+Tasks with due dates earn a bonus +15 XP when completed on time. They also appear in the Upcoming view and Calendar so nothing slips through.</p>
+<p><strong>Use Notes for context</strong><br>
+Add notes when a task has a ticket number, a meeting link, a server name, or anything you would otherwise forget. Notes are searchable.</p>
+<p><strong>Keep your streak going</strong><br>
+Complete at least one task every day to build your streak. Even a small Low-priority task counts. Streaks earn bonus XP at day 3 and day 7.</p>
+<p><strong>Check My Progress on Fridays</strong><br>
+Use the Progress view (<code>6</code>) at the end of the week to see your bar chart and heatmap. It gives you a clear sense of how productive the week was.</p>
+<p><strong>Export every Friday</strong><br>
+Make it a habit to press <code>E</code> at the end of the week to download a backup. Name them or keep the dated filename — they stack up as a history.</p>
+<p><strong>Hide categories you do not use</strong><br>
+Go to Settings → Visible Categories and toggle off anything not relevant to your current role. A shorter sidebar is a cleaner sidebar.</p>
+<p><strong>Use Focus Mode for deep work</strong><br>
+When you need to concentrate, enable Focus Mode in Settings. The sidebar shows only the essential navigation.</p>
+<p><strong>Mute at the office</strong><br>
+Press <code>M</code> once when you sit down at your desk in the office. Press <code>M</code> again when you are working alone and want the sounds back.</p>
+<hr>
+<h2 id="frequently-asked-questions">Frequently Asked Questions</h2>
+<p><strong>Where is my data stored?</strong><br>
+In your browser's localStorage — on your own computer, in the browser you used to open WorkLog. It does not go to any server.</p>
+<p><strong>Will I lose my data if I close the browser?</strong><br>
+No. localStorage persists when you close and reopen the browser. Your data is there the next time you open WorkLog.</p>
+<p><strong>What if I clear my browser history or cache?</strong><br>
+&quot;Clear browsing data&quot; in most browsers includes an option to clear site data / localStorage. If you do this, your WorkLog data will be erased. Always keep a backup JSON file to be safe.</p>
+<p><strong>Can two people use the same hosted URL and see each other's tasks?</strong><br>
+No. Each person's data is stored in their own browser. Two people opening the same URL each see their own independent WorkLog.</p>
+<p><strong>Can I use WorkLog offline?</strong><br>
+Yes, once the page has loaded. The app logic runs in the browser. However, if you clear your browser cache while offline, the CDN resources (React, Babel, fonts) will need to reload next time you are online.</p>
+<p><strong>Can I rename the app?</strong><br>
+Yes. Go to ⚙️ Settings → App Identity and type any name you like for the app title and subtitle.</p>
+<p><strong>Is my data private?</strong><br>
+Yes. WorkLog makes no network requests of its own. Your tasks are never sent anywhere. The only network activity is loading React, Babel, and Google Fonts from public CDNs when the page first loads.</p>
+<p><strong>Can I add more categories?</strong><br>
+Not through the UI currently. The categories are defined in the code. If you are comfortable editing HTML, you can open <code>WorkLog.html</code> in a text editor and add to the <code>ALL_CATEGORIES</code> array near the top of the script.</p>
+<p><strong>What happens to my XP if I import a backup?</strong><br>
+If the backup file contains XP and streak data (exported from WorkLog v6 or later), those values are restored along with your tasks. If the backup was made with an older version that did not include XP, you start from 0 XP but keep all your task history.</p>
+<p><strong>Can I use this on my phone?</strong><br>
+WorkLog works on mobile browsers, though it is optimised for desktop use. The sidebar and multi-column layouts are best on a screen wider than 768px.</p>
+<hr>
+<p><em>WorkLog — built for focused work, one task at a time.</em></p>
+
+</body>
+</html>
