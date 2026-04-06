@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>WorkLog</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;width:100%;overflow:hidden}
+body{font-family:'DM Sans',system-ui,sans-serif}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(128,128,128,0.25);border-radius:10px}
+select option{background:#1a1a1a;color:#eee}
+.sticky-note{position:relative;transition:transform 0.15s,box-shadow 0.15s}
+.sticky-note:hover{transform:translateY(-3px) rotate(0.3deg);z-index:2}
+.sticky-note::before{content:'';position:absolute;top:0;left:0;right:0;height:28px;border-radius:10px 10px 0 0;opacity:0.35}
+.sticky-high::before{background:linear-gradient(180deg,rgba(252,165,165,0.6) 0%,transparent 100%)}
+.sticky-med::before{background:linear-gradient(180deg,rgba(253,230,138,0.6) 0%,transparent 100%)}
+.sticky-low::before{background:linear-gradient(180deg,rgba(254,240,138,0.4) 0%,transparent 100%)}
+.sticky-note::after{content:'';position:absolute;bottom:-3px;right:8px;left:8px;height:6px;border-radius:0 0 4px 4px;filter:blur(4px);opacity:0.2;background:#000}
+.date-picker-wrap{position:relative}
+.date-picker-popup{position:fixed;z-index:9999;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.3);min-width:290px}
+.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:8px}
+.dp-day{padding:7px 4px;text-align:center;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;transition:background 0.1s}
+.dp-day:hover{opacity:0.75}
+.dp-day.today{font-weight:800}
+.dp-day.selected{color:#fff!important}
+.dp-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 6px}
+.dp-hdr{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0 8px 6px}
+.dp-hdr-cell{text-align:center;font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:3px 0}
+.upcoming-item{border-radius:10px;padding:10px 12px;margin-bottom:8px;border-left:3px solid;position:relative;cursor:pointer}
+.upcoming-item .xi{position:absolute;top:8px;right:8px;opacity:0;transition:opacity 0.15s;cursor:pointer;font-size:14px;background:none;border:none;padding:2px 5px;border-radius:4px}
+.upcoming-item:hover .xi{opacity:1}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 6px;border-radius:5px;font-size:11px;font-weight:700;border-bottom:2px solid rgba(0,0,0,0.2)}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeSlide 0.18s ease-out forwards}
+@keyframes scaleIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+.scale-in{animation:scaleIn 0.15s ease-out forwards}
+@keyframes xpFlash{0%{opacity:0;transform:translateY(0) scale(0.8)}30%{opacity:1;transform:translateY(-18px) scale(1.1)}100%{opacity:0;transform:translateY(-36px) scale(0.9)}}
+.xp-pop{position:fixed;pointer-events:none;font-size:13px;font-weight:800;animation:xpFlash 1.2s ease-out forwards;z-index:9999}
+@keyframes levelUp{0%{opacity:0;transform:scale(0.7)}60%{opacity:1;transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+.level-up-toast{animation:levelUp 0.5s ease-out forwards}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback,useMemo}=React;
+
+// ── THEMES ───────────────────────────────────────────────────────────────────
+const THEMES={
+  light:{name:"Light",bg:"#f8f7f4",sidebar:"#ffffff",card:"#ffffff",cardBorder:"#e8e6e0",
+    text:"#1a1916",textMuted:"#6b6860",textFaint:"#a8a49c",accent:"#c0392b",
+    inputBg:"#ffffff",inputBorder:"#d8d5ce",hover:"#f2f0ea",divider:"#ece9e2",
+    badge:"#f0ede6",badgeText:"#6b6860",
+    stickyHigh:"#fff0f0",stickyMed:"#fffbea",stickyLow:"#fefff0",
+    stickyHighBorder:"#fca5a5",stickyMedBorder:"#fde68a",stickyLowBorder:"#fef08a",
+    stickyHighShadow:"rgba(239,68,68,0.15)",stickyMedShadow:"rgba(234,179,8,0.15)",stickyLowShadow:"rgba(132,204,22,0.12)",
+    overdueText:"#c0392b",overdueBg:"#fef2f2",
+    dpBg:"#ffffff",dpText:"#1a1916",dpMuted:"#a8a49c",kbdBg:"#e8e6e0",kbdText:"#1a1916",
+    chartBar:"#c0392b",chartBarFaint:"#fca5a5",heatEmpty:"#f0ede6"},
+  dark:{name:"Dark",bg:"#000000",sidebar:"#0d0d0d",card:"#111111",cardBorder:"#222222",
+    text:"#f0ede6",textMuted:"#888580",textFaint:"#555250",accent:"#e05252",
+    inputBg:"#1a1a1a",inputBorder:"#2a2a2a",hover:"#1a1a1a",divider:"#1f1f1f",
+    badge:"#1a1a1a",badgeText:"#888580",
+    stickyHigh:"#2a1010",stickyMed:"#2a2608",stickyLow:"#1e2208",
+    stickyHighBorder:"#7f2020",stickyMedBorder:"#7a6a15",stickyLowBorder:"#5a6a15",
+    stickyHighShadow:"rgba(239,68,68,0.12)",stickyMedShadow:"rgba(234,179,8,0.1)",stickyLowShadow:"rgba(132,204,22,0.1)",
+    overdueText:"#e05252",overdueBg:"#1f0a0a",
+    dpBg:"#1a1a1a",dpText:"#f0ede6",dpMuted:"#555250",kbdBg:"#2a2a2a",kbdText:"#f0ede6",
+    chartBar:"#e05252",chartBarFaint:"#7f2020",heatEmpty:"#1a1a1a"},
+  softdark:{name:"Soft Dark",bg:"#1e1e2a",sidebar:"#252534",card:"#2a2a3a",cardBorder:"#353548",
+    text:"#e8e6f0",textMuted:"#9896a8",textFaint:"#5e5c70",accent:"#7c6af0",
+    inputBg:"#2a2a3a",inputBorder:"#3a3a50",hover:"#323244",divider:"#303044",
+    badge:"#323244",badgeText:"#9896a8",
+    stickyHigh:"#2e1428",stickyMed:"#28281a",stickyLow:"#1a2820",
+    stickyHighBorder:"#8a3050",stickyMedBorder:"#6a6020",stickyLowBorder:"#306040",
+    stickyHighShadow:"rgba(200,60,120,0.15)",stickyMedShadow:"rgba(180,160,20,0.12)",stickyLowShadow:"rgba(60,160,80,0.12)",
+    overdueText:"#f08080",overdueBg:"#2a1a1a",
+    dpBg:"#2a2a3a",dpText:"#e8e6f0",dpMuted:"#5e5c70",kbdBg:"#3a3a50",kbdText:"#e8e6f0",
+    chartBar:"#7c6af0",chartBarFaint:"#3a3a50",heatEmpty:"#252534"},
+};
+
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+const ALL_CATEGORIES=["Meetings","Change Request","Incident","Service Request","Teams","SharePoint","GitHub","Documentation","Email / Communication","Outlook"];
+const PRIORITIES=["High","Medium","Low"];
+const CAT_ICONS={"Meetings":"◎","Change Request":"⟳","Incident":"⚠","Service Request":"⊕","Teams":"⊞","SharePoint":"◈","GitHub":"⬡","Documentation":"☰","Email / Communication":"✉","Outlook":"📧"};
+const PRI_COLORS=(t)=>({
+  High:{bg:t.stickyHigh,border:t.stickyHighBorder,shadow:t.stickyHighShadow,text:t.overdueText,label:"🔴"},
+  Medium:{bg:t.stickyMed,border:t.stickyMedBorder,shadow:t.stickyMedShadow,text:"#92700a",label:"🟡"},
+  Low:{bg:t.stickyLow,border:t.stickyLowBorder,shadow:t.stickyLowShadow,text:"#3a6a20",label:"🟢"},
+});
+const VIEW_IDS=["inbox","today","upcoming","sticky","calendar","progress","completed"];
+
+// ── XP / LEVELS ──────────────────────────────────────────────────────────────
+const LEVELS=[
+  {min:0,    max:99,   badge:"🌱", title:"Beginner",      color:"#6b7280"},
+  {min:100,  max:299,  badge:"⚡", title:"Getting Started",color:"#3b82f6"},
+  {min:300,  max:599,  badge:"🔥", title:"On Fire",        color:"#f97316"},
+  {min:600,  max:999,  badge:"🎯", title:"Focused",        color:"#8b5cf6"},
+  {min:1000, max:1999, badge:"🏆", title:"Champion",       color:"#f59e0b"},
+  {min:2000, max:4999, badge:"💎", title:"Elite",          color:"#06b6d4"},
+  {min:5000, max:Infinity,badge:"🚀",title:"Legend",       color:"#ec4899"},
+];
+const getLevel=(xp)=>{for(let i=LEVELS.length-1;i>=0;i--){if(xp>=LEVELS[i].min)return LEVELS[i];}return LEVELS[0];};
+const xpForTask=(priority,onTime)=>{
+  let pts=priority==="High"?25:priority==="Medium"?10:5;
+  if(onTime)pts+=15;
+  return pts;
+};
+
+// ── SOUND ENGINE ─────────────────────────────────────────────────────────────
+const SoundEngine={
+  ctx:null,enabled:true,
+  getCtx(){if(!this.ctx)this.ctx=new(window.AudioContext||window.webkitAudioContext)();return this.ctx;},
+  playChime(){if(!this.enabled)return;try{const ctx=this.getCtx(),t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(880,t);o.frequency.exponentialRampToValueAtTime(660,t+0.3);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.18,t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+0.7);o.start(t);o.stop(t+0.7);const o2=ctx.createOscillator(),g2=ctx.createGain();o2.connect(g2);g2.connect(ctx.destination);o2.type='sine';o2.frequency.setValueAtTime(1320,t);g2.gain.setValueAtTime(0,t);g2.gain.linearRampToValueAtTime(0.06,t+0.02);g2.gain.exponentialRampToValueAtTime(0.001,t+0.5);o2.start(t);o2.stop(t+0.5);}catch(e){}},
+  playLevelUp(){if(!this.enabled)return;try{const ctx=this.getCtx();[523.25,659.25,783.99,1046.5].forEach((freq,i)=>{const t=ctx.currentTime+i*0.1,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='triangle';o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.15,t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+0.35);o.start(t);o.stop(t+0.4);});}catch(e){}},
+  playGentle(){if(!this.enabled)return;try{const ctx=this.getCtx(),t=ctx.currentTime;[528,660].forEach((freq,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(freq,t+i*0.15);g.gain.setValueAtTime(0,t+i*0.15);g.gain.linearRampToValueAtTime(0.1,t+i*0.15+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+i*0.15+0.45);o.start(t+i*0.15);o.stop(t+i*0.15+0.5);});}catch(e){}},
+  playUndo(){if(!this.enabled)return;try{const ctx=this.getCtx(),t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(660,t);o.frequency.exponentialRampToValueAtTime(440,t+0.25);g.gain.setValueAtTime(0.08,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.start(t);o.stop(t+0.3);}catch(e){}},
+  playLevelUpFanfare(){if(!this.enabled)return;try{const ctx=this.getCtx();[392,523,659,784,1047].forEach((f,i)=>{const t=ctx.currentTime+i*0.12,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='triangle';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.2,t+0.03);g.gain.exponentialRampToValueAtTime(0.001,t+0.5);o.start(t);o.stop(t+0.55);});}catch(e){}},
+  play(priority,wasCompleted){if(wasCompleted){this.playUndo();return;}if(priority==='High')this.playLevelUp();else if(priority==='Low')this.playGentle();else this.playChime();}
+};
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const todayStr=()=>new Date().toISOString().split("T")[0];
+const isOverdue=(d)=>d&&d<todayStr();
+const fmtDate=(d)=>{if(!d)return"";const dt=new Date(d+"T00:00:00");return dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});};
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const STORAGE_KEY="worklog-v6";
+const emptyTask=()=>({id:newId(),title:"",category:"Meetings",priority:"Medium",dueDate:"",notes:"",completed:false,completedAt:null,createdAt:new Date().toISOString()});
+const buildCalDays=(year,month)=>{const firstDay=new Date(year,month,1).getDay();const days=new Date(year,month+1,0).getDate();const pad=(firstDay+6)%7;const cells=[];for(let i=0;i<pad;i++)cells.push(null);for(let i=1;i<=days;i++)cells.push(i);return cells;};
+
+// ── DEFAULT SETTINGS ─────────────────────────────────────────────────────────
+const DEFAULT_SETTINGS={
+  appName:"WorkLog",appSubtitle:"Work Task Manager",
+  hiddenCategories:[],
+  showImportExport:true,showCompleted:true,
+  focusMode:false,
+  theme:"light",showBadges:true,soundEnabled:true,
+};
+
+// ── DATE PICKER ──────────────────────────────────────────────────────────────
+function DatePicker({value,onChange,theme}){
+  const t=theme;
+  const [open,setOpen]=useState(false);
+  const [viewDate,setViewDate]=useState(()=>value?new Date(value+"T00:00:00"):new Date());
+  const triggerRef=useRef(),popupRef=useRef();
+  const [pos,setPos]=useState({top:0,left:0});
+  useEffect(()=>{if(open&&triggerRef.current){const r=triggerRef.current.getBoundingClientRect();setPos({top:r.bottom+6,left:r.left});}},[open]);
+  useEffect(()=>{const h=(e)=>{if(triggerRef.current&&!triggerRef.current.contains(e.target)&&popupRef.current&&!popupRef.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
+  const yr=viewDate.getFullYear(),mo=viewDate.getMonth();
+  const cells=buildCalDays(yr,mo);
+  const monthName=viewDate.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+  const today=todayStr();
+  const selectDay=(d)=>{const ds=`${yr}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;onChange(ds);setOpen(false);};
+  return(
+    <div className="date-picker-wrap">
+      <div ref={triggerRef} onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:8,border:`1.5px solid ${open?t.accent:t.inputBorder}`,background:t.inputBg,color:value?t.text:t.textFaint,fontSize:13,cursor:"pointer",userSelect:"none",transition:"border 0.15s"}}>
+        <span style={{fontSize:15}}>📅</span>
+        <span style={{flex:1}}>{value?fmtDate(value):"Pick a date..."}</span>
+        {value&&<span onClick={e=>{e.stopPropagation();onChange("");setOpen(false);}} style={{color:t.textFaint,fontSize:13,padding:"0 3px"}}>✕</span>}
+        <span style={{color:t.textFaint,fontSize:10}}>▾</span>
+      </div>
+      {open&&(
+        <div ref={popupRef} className="date-picker-popup fade-in" style={{top:pos.top,left:pos.left,background:t.dpBg,border:`1px solid ${t.inputBorder}`}}>
+          <div className="dp-nav">
+            <button onClick={()=>setViewDate(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} style={{background:"none",border:`1px solid ${t.inputBorder}`,borderRadius:6,cursor:"pointer",color:t.dpText,padding:"4px 10px",fontSize:13}}>◀</button>
+            <span style={{fontWeight:700,fontSize:14,color:t.dpText}}>{monthName}</span>
+            <button onClick={()=>setViewDate(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} style={{background:"none",border:`1px solid ${t.inputBorder}`,borderRadius:6,cursor:"pointer",color:t.dpText,padding:"4px 10px",fontSize:13}}>▶</button>
+          </div>
+          <div className="dp-hdr">{["Mo","Tu","We","Th","Fr","Sa","Su"].map(d=><div key={d} className="dp-hdr-cell" style={{color:t.dpMuted}}>{d}</div>)}</div>
+          <div className="dp-grid">
+            {cells.map((d,i)=>{if(!d)return<div key={`e${i}`}/>;const ds=`${yr}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;const isTod=ds===today,isSel=ds===value;return<div key={d} className={`dp-day${isTod?" today":""}${isSel?" selected":""}`} style={{color:isSel?"#fff":isTod?t.accent:t.dpText,background:isSel?t.accent:isTod?`${t.accent}20`:"transparent"}} onClick={()=>selectDay(d)}>{d}</div>;})}
+          </div>
+          <div style={{padding:"4px 14px 12px",display:"flex",justifyContent:"space-between"}}>
+            <button onClick={()=>{const n=new Date();selectDay(n.getDate());setViewDate(n);}} style={{fontSize:11,color:t.accent,background:"none",border:"none",cursor:"pointer",fontWeight:600}}>Today</button>
+            <button onClick={()=>{onChange("");setOpen(false);}} style={{fontSize:11,color:t.dpMuted,background:"none",border:"none",cursor:"pointer",textDecoration:"underline"}}>Clear</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── XP POPUP ─────────────────────────────────────────────────────────────────
+function XPPopup({xp,color,x,y}){
+  return <div className="xp-pop" style={{left:x,top:y,color}}>+{xp} XP</div>;
+}
+
+// ── LEVEL UP TOAST ────────────────────────────────────────────────────────────
+function LevelUpToast({level,onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,3000);return()=>clearTimeout(t);},[]);
+  return(
+    <div className="level-up-toast" style={{position:"fixed",bottom:32,left:"50%",transform:"translateX(-50%)",background:level.color,color:"#fff",borderRadius:14,padding:"14px 24px",boxShadow:"0 8px 32px rgba(0,0,0,0.3)",zIndex:4000,display:"flex",alignItems:"center",gap:12,fontSize:14,fontWeight:700}}>
+      <span style={{fontSize:28}}>{level.badge}</span>
+      <div><div style={{fontSize:11,opacity:0.85,marginBottom:2}}>LEVEL UP!</div><div>{level.title}</div></div>
+    </div>
+  );
+}
+
+// ── SETTINGS PANEL ────────────────────────────────────────────────────────────
+function SettingsPanel({settings,onUpdate,onClose,theme}){
+  const t=theme;
+  const [local,setLocal]=useState({...settings});
+  const set=(k,v)=>setLocal(s=>({...s,[k]:v}));
+  const toggleCat=(c)=>setLocal(s=>({...s,hiddenCategories:s.hiddenCategories.includes(c)?s.hiddenCategories.filter(x=>x!==c):[...s.hiddenCategories,c]}));
+  const save=()=>{onUpdate(local);onClose();};
+
+  const sectionStyle={marginBottom:22};
+  const sectionTitle={fontSize:11,fontWeight:800,color:t.textFaint,letterSpacing:"1px",textTransform:"uppercase",marginBottom:10,paddingBottom:6,borderBottom:`1px solid ${t.divider}`};
+  const rowStyle={display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 0",borderBottom:`1px solid ${t.divider}`};
+  const Toggle=({val,onToggle,label,sub})=>(
+    <div style={rowStyle}>
+      <div><div style={{fontSize:13,color:t.text,fontWeight:500}}>{label}</div>{sub&&<div style={{fontSize:11,color:t.textFaint}}>{sub}</div>}</div>
+      <div onClick={onToggle} style={{width:40,height:22,borderRadius:11,background:val?t.accent:t.inputBorder,cursor:"pointer",position:"relative",transition:"background 0.2s",flexShrink:0}}>
+        <div style={{position:"absolute",top:3,left:val?20:3,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/>
+      </div>
+    </div>
+  );
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"flex-end",zIndex:3000}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="fade-in" style={{background:t.sidebar,width:340,height:"100%",overflowY:"auto",boxShadow:"-8px 0 40px rgba(0,0,0,0.3)",display:"flex",flexDirection:"column"}}>
+        <div style={{padding:"20px 20px 16px",borderBottom:`1px solid ${t.divider}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{fontSize:16,fontWeight:700,color:t.text}}>⚙️ Settings</div>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:t.textFaint,fontSize:18}}>✕</button>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"20px"}}>
+
+          {/* App Identity */}
+          <div style={sectionStyle}>
+            <div style={sectionTitle}>App Identity</div>
+            <div style={{marginBottom:10}}>
+              <label style={{fontSize:11,fontWeight:600,color:t.textMuted,display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px"}}>App Name</label>
+              <input value={local.appName} onChange={e=>set("appName",e.target.value)} style={{width:"100%",padding:"8px 11px",borderRadius:8,border:`1px solid ${t.inputBorder}`,background:t.inputBg,color:t.text,fontSize:13,fontFamily:"inherit",outline:"none"}} placeholder="WorkLog"/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:t.textMuted,display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px"}}>Subtitle</label>
+              <input value={local.appSubtitle} onChange={e=>set("appSubtitle",e.target.value)} style={{width:"100%",padding:"8px 11px",borderRadius:8,border:`1px solid ${t.inputBorder}`,background:t.inputBg,color:t.text,fontSize:13,fontFamily:"inherit",outline:"none"}} placeholder="Work Task Manager"/>
+            </div>
+          </div>
+
+          {/* Theme */}
+          <div style={sectionStyle}>
+            <div style={sectionTitle}>Theme</div>
+            <div style={{display:"flex",gap:10}}>
+              {Object.entries(THEMES).map(([k,th])=>(
+                <div key={k} onClick={()=>set("theme",k)} style={{flex:1,padding:"10px 8px",borderRadius:10,border:`2px solid ${local.theme===k?t.accent:t.inputBorder}`,background:th.bg,cursor:"pointer",textAlign:"center"}}>
+                  <div style={{fontSize:11,fontWeight:600,color:local.theme===k?t.accent:t.textMuted}}>{th.name}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Display */}
+          <div style={sectionStyle}>
+            <div style={sectionTitle}>Display</div>
+            <Toggle val={local.showBadges} onToggle={()=>set("showBadges",!local.showBadges)} label="Count badges" sub="Show task counts in sidebar"/>
+            <Toggle val={local.soundEnabled} onToggle={()=>set("soundEnabled",!local.soundEnabled)} label="Celebration sounds" sub="Play sounds when completing tasks"/>
+            <Toggle val={local.focusMode} onToggle={()=>set("focusMode",!local.focusMode)} label="Focus mode" sub="Hide categories and extras — just the WorkLog list"/>
+            <Toggle val={local.showImportExport} onToggle={()=>set("showImportExport",!local.showImportExport)} label="Show import / export" sub="Show backup buttons in sidebar"/>
+            <Toggle val={local.showCompleted} onToggle={()=>set("showCompleted",!local.showCompleted)} label="Show Completed view" sub="Show completed tasks in sidebar"/>
+          </div>
+
+          {/* Categories */}
+          <div style={sectionStyle}>
+            <div style={sectionTitle}>Visible Categories</div>
+            <div style={{fontSize:11,color:t.textFaint,marginBottom:8}}>Toggle off to hide from sidebar and filters</div>
+            {ALL_CATEGORIES.map(c=>(
+              <div key={c} style={rowStyle}>
+                <span style={{fontSize:13,color:t.text}}>{CAT_ICONS[c]} {c}</span>
+                <div onClick={()=>toggleCat(c)} style={{width:40,height:22,borderRadius:11,background:!local.hiddenCategories.includes(c)?t.accent:t.inputBorder,cursor:"pointer",position:"relative",transition:"background 0.2s",flexShrink:0}}>
+                  <div style={{position:"absolute",top:3,left:!local.hiddenCategories.includes(c)?20:3,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{padding:"16px 20px",borderTop:`1px solid ${t.divider}`,display:"flex",gap:8}}>
+          <button onClick={onClose} style={{flex:1,padding:"9px",borderRadius:8,border:`1px solid ${t.inputBorder}`,background:"none",color:t.textMuted,fontSize:13,cursor:"pointer"}}>Cancel</button>
+          <button onClick={save} style={{flex:2,padding:"9px",borderRadius:8,background:t.accent,color:"#fff",border:"none",fontSize:13,fontWeight:600,cursor:"pointer"}}>Save Settings</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PROGRESS VIEW ─────────────────────────────────────────────────────────────
+function ViewProgress({tasks,xp,streak,theme}){
+  const t=theme;
+  const today=todayStr();
+  const now=new Date();
+  const completedTasks=tasks.filter(tk=>tk.completed&&tk.completedAt);
+
+  // Weekly stats
+  const weekDays=[];
+  for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);weekDays.push(d.toISOString().split("T")[0]);}
+  const weekCounts=weekDays.map(d=>({date:d,count:completedTasks.filter(tk=>tk.completedAt?.startsWith(d)).length,label:new Date(d+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short"})}));
+  const weekTotal=weekCounts.reduce((s,d)=>s+d.count,0);
+  const maxWeek=Math.max(...weekCounts.map(d=>d.count),1);
+
+  // Monthly stats
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().split("T")[0];
+  const lastMonthStart=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString().split("T")[0];
+  const lastMonthEnd=new Date(now.getFullYear(),now.getMonth(),0).toISOString().split("T")[0];
+  const monthTotal=completedTasks.filter(tk=>tk.completedAt>=monthStart).length;
+  const lastMonthTotal=completedTasks.filter(tk=>tk.completedAt>=lastMonthStart&&tk.completedAt<=lastMonthEnd).length;
+
+  // Heatmap — last 12 weeks
+  const heatDays=[];
+  for(let i=83;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);heatDays.push(d.toISOString().split("T")[0]);}
+  const heatCounts=heatDays.reduce((acc,d)=>{acc[d]=completedTasks.filter(tk=>tk.completedAt?.startsWith(d)).length;return acc;},{});
+  const maxHeat=Math.max(...Object.values(heatCounts),1);
+
+  // Cat breakdown this month
+  const catBreakdown=ALL_CATEGORIES.map(c=>({c,count:completedTasks.filter(tk=>tk.completedAt>=monthStart&&tk.category===c).length})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
+
+  // Level
+  const level=getLevel(xp);
+  const nextLevel=LEVELS[LEVELS.indexOf(level)+1];
+  const xpInLevel=xp-level.min;
+  const xpNeeded=nextLevel?(nextLevel.min-level.min):1;
+  const pct=Math.min(100,Math.round(xpInLevel/xpNeeded*100));
+
+  const heatColor=(count)=>{
+    if(count===0)return t.heatEmpty;
+    const intensity=count/maxHeat;
+    if(intensity<0.25)return`${t.accent}40`;
+    if(intensity<0.5)return`${t.accent}70`;
+    if(intensity<0.75)return`${t.accent}aa`;
+    return t.accent;
+  };
+
+  const StatCard=({label,value,sub,icon,color})=>(
+    <div style={{background:t.card,border:`1px solid ${t.cardBorder}`,borderRadius:12,padding:"16px",flex:1,minWidth:120}}>
+      <div style={{fontSize:20,marginBottom:6}}>{icon}</div>
+      <div style={{fontSize:26,fontWeight:800,color:color||t.accent,letterSpacing:"-1px"}}>{value}</div>
+      <div style={{fontSize:12,fontWeight:600,color:t.text,marginTop:2}}>{label}</div>
+      {sub&&<div style={{fontSize:11,color:t.textFaint,marginTop:2}}>{sub}</div>}
+    </div>
+  );
+
+  return(
+    <div style={{overflowY:"auto",height:"100%"}}>
+      {/* XP Card */}
+      <div style={{background:`linear-gradient(135deg,${level.color}22,${level.color}08)`,border:`1px solid ${level.color}44`,borderRadius:14,padding:"20px",marginBottom:20,display:"flex",alignItems:"center",gap:16}}>
+        <div style={{fontSize:48,lineHeight:1}}>{level.badge}</div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:11,fontWeight:700,color:level.color,letterSpacing:"1px",textTransform:"uppercase",marginBottom:2}}>{level.title}</div>
+          <div style={{fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.5px"}}>{xp.toLocaleString()} XP</div>
+          <div style={{marginTop:8,height:6,background:t.divider,borderRadius:4,overflow:"hidden"}}>
+            <div style={{height:"100%",width:`${pct}%`,background:level.color,borderRadius:4,transition:"width 0.5s"}}/>
+          </div>
+          <div style={{fontSize:11,color:t.textFaint,marginTop:4}}>
+            {nextLevel?`${xpNeeded-xpInLevel} XP to ${nextLevel.title}`:"Max level reached! 🎉"}
+          </div>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:28,fontWeight:800,color:level.color}}>{streak}</div>
+          <div style={{fontSize:11,color:t.textMuted,fontWeight:600}}>day streak 🔥</div>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+        <StatCard icon="✅" label="This week" value={weekTotal} sub="tasks completed" color={t.accent}/>
+        <StatCard icon="📅" label="This month" value={monthTotal} sub={lastMonthTotal?`vs ${lastMonthTotal} last month`:undefined} color={t.accent}/>
+        <StatCard icon="🎯" label="Total done" value={completedTasks.length} sub="all time" color={t.accent}/>
+        <StatCard icon="⚡" label="XP earned" value={xp} sub="total points" color={level.color}/>
+      </div>
+
+      {/* Weekly bar chart */}
+      <div style={{background:t.card,border:`1px solid ${t.cardBorder}`,borderRadius:12,padding:"18px",marginBottom:20}}>
+        <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:16}}>📊 This week — daily completions</div>
+        <div style={{display:"flex",gap:6,alignItems:"flex-end",height:100}}>
+          {weekCounts.map((d,i)=>(
+            <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+              <div style={{fontSize:10,fontWeight:600,color:t.accent}}>{d.count>0?d.count:""}</div>
+              <div style={{width:"100%",background:d.date===today?t.accent:d.count>0?t.chartBar:t.chartBarFaint,borderRadius:"4px 4px 0 0",height:`${Math.max(4,d.count/maxWeek*80)}px`,opacity:d.date===today?1:0.7,transition:"height 0.4s"}}/>
+              <div style={{fontSize:10,color:d.date===today?t.accent:t.textFaint,fontWeight:d.date===today?700:400}}>{d.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 12-week heatmap */}
+      <div style={{background:t.card,border:`1px solid ${t.cardBorder}`,borderRadius:12,padding:"18px",marginBottom:20}}>
+        <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:12}}>🔥 Activity — last 12 weeks</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(12,1fr)",gap:3}}>
+          {Array.from({length:12},(_,wi)=>(
+            <div key={wi} style={{display:"flex",flexDirection:"column",gap:3}}>
+              {heatDays.slice(wi*7,(wi+1)*7).map((d,di)=>(
+                <div key={di} title={`${d}: ${heatCounts[d]||0} completed`} style={{height:12,borderRadius:3,background:heatColor(heatCounts[d]||0),cursor:"default"}}/>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginTop:10,fontSize:10,color:t.textFaint}}>
+          <span>Less</span>
+          {[0,0.25,0.5,0.75,1].map((v,i)=><div key={i} style={{width:10,height:10,borderRadius:2,background:v===0?t.heatEmpty:`${t.accent}${Math.round(v*170+40).toString(16).padStart(2,"0")}`}}/>)}
+          <span>More</span>
+        </div>
+      </div>
+
+      {/* Category breakdown */}
+      {catBreakdown.length>0&&(
+        <div style={{background:t.card,border:`1px solid ${t.cardBorder}`,borderRadius:12,padding:"18px",marginBottom:20}}>
+          <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:12}}>📂 This month by category</div>
+          {catBreakdown.map(({c,count},i)=>(
+            <div key={c} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+              <span style={{fontSize:13,width:20}}>{CAT_ICONS[c]}</span>
+              <span style={{fontSize:12,color:t.text,flex:1,fontWeight:500}}>{c}</span>
+              <div style={{width:100,height:6,background:t.divider,borderRadius:3,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${count/catBreakdown[0].count*100}%`,background:t.accent,borderRadius:3}}/>
+              </div>
+              <span style={{fontSize:12,fontWeight:700,color:t.accent,minWidth:20,textAlign:"right"}}>{count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* XP breakdown */}
+      <div style={{background:t.card,border:`1px solid ${t.cardBorder}`,borderRadius:12,padding:"18px",marginBottom:20}}>
+        <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:12}}>⚡ How XP is earned</div>
+        {[["🔴 High priority task","25 XP"],["🟡 Medium priority task","10 XP"],["🟢 Low priority task","5 XP"],["📅 Completed before due date","+15 bonus XP"],["🔥 3-day streak bonus","+50 XP"],["🔥 7-day streak bonus","+150 XP"]].map(([label,pts])=>(
+          <div key={label} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${t.divider}`,fontSize:12}}>
+            <span style={{color:t.text}}>{label}</span>
+            <span style={{fontWeight:700,color:t.accent}}>{pts}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── SHORTCUTS HELP ────────────────────────────────────────────────────────────
+function ShortcutsHelp({theme,onClose}){
+  const t=theme;
+  const groups=[
+    {label:"Navigation",items:[{keys:["1"," – ","7"],desc:"Jump to view"},{keys:["B"],desc:"Toggle sidebar"}]},
+    {label:"Tasks",items:[{keys:["N"],desc:"Add new WorkLog item"},{keys:["Ctrl","K"],desc:"Open search"},{keys:["/"],desc:"Focus search"},{keys:["Ctrl","↵"],desc:"Save modal"},{keys:["Esc"],desc:"Close modal/search"}]},
+    {label:"Data & Display",items:[{keys:["E"],desc:"Export JSON backup"},{keys:["M"],desc:"Toggle sounds"},{keys:["?"],desc:"This shortcuts guide"}]},
+  ];
+  const Kbd=({k})=><span className="kbd" style={{background:t.kbdBg,color:t.kbdText,marginRight:2}}>{k}</span>;
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:3000}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="scale-in" style={{background:t.card,border:`1px solid ${t.cardBorder}`,borderRadius:16,padding:"24px",width:440,maxHeight:"85vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,0.4)"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+          <div style={{fontSize:17,fontWeight:700,color:t.text}}>⌨️ Keyboard Shortcuts</div>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:t.textFaint,fontSize:18}}>✕</button>
+        </div>
+        {groups.map(g=>(
+          <div key={g.label} style={{marginBottom:18}}>
+            <div style={{fontSize:10,fontWeight:800,color:t.textFaint,letterSpacing:"1px",textTransform:"uppercase",marginBottom:8,paddingBottom:4,borderBottom:`1px solid ${t.divider}`}}>{g.label}</div>
+            {g.items.map((item,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${t.divider}`}}>
+                <span style={{fontSize:13,color:t.text}}>{item.desc}</span>
+                <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0,marginLeft:12}}>
+                  {item.keys.map((k,ki)=>k===" – "?<span key={ki} style={{fontSize:11,color:t.textFaint,margin:"0 3px"}}>–</span>:<Kbd key={ki} k={k}/>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+        <div style={{fontSize:11,color:t.textFaint,textAlign:"center",marginTop:8}}>Press <Kbd k="?"/> or <Kbd k="Esc"/> to close</div>
+      </div>
+    </div>
+  );
+}
+
+// ── MAIN APP ─────────────────────────────────────────────────────────────────
+function App(){
+  const loadState=()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||{};}catch{return{};}};
+
+  const [settings,setSettings]=useState(()=>({...DEFAULT_SETTINGS,...loadState().settings}));
+  const [tasks,setTasks]=useState(()=>loadState().tasks||[]);
+  const [xp,setXp]=useState(()=>loadState().xp||0);
+  const [streak,setStreak]=useState(()=>loadState().streak||0);
+  const [lastCompletedDate,setLastCompletedDate]=useState(()=>loadState().lastCompletedDate||null);
+
+  const [view,setView]=useState("inbox");
+  const [search,setSearch]=useState("");
+  const [searchOpen,setSearchOpen]=useState(false);
+  const [filterCat,setFilterCat]=useState("All");
+  const [modal,setModal]=useState(null);
+  const [calDate,setCalDate]=useState(new Date());
+  const [calView,setCalView]=useState("split");
+  const [stickySort,setStickySort]=useState("priority");
+  const [sidebarOpen,setSidebarOpen]=useState(true);
+  const [showShortcuts,setShowShortcuts]=useState(false);
+  const [showSettings,setShowSettings]=useState(false);
+  const [xpPops,setXpPops]=useState([]);
+  const [levelUpToast,setLevelUpToast]=useState(null);
+  const fileRef=useRef();
+  const today=todayStr();
+  const t=THEMES[settings.theme];
+  const CATEGORIES=ALL_CATEGORIES.filter(c=>!settings.hiddenCategories.includes(c));
+
+  // Save everything
+  useEffect(()=>{
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify({tasks,settings,xp,streak,lastCompletedDate}));}catch{}
+  },[tasks,settings,xp,streak,lastCompletedDate]);
+
+  useEffect(()=>{SoundEngine.enabled=settings.soundEnabled;},[settings.soundEnabled]);
+
+  // Keyboard shortcuts
+  useEffect(()=>{
+    const onDown=(e)=>{
+      const tag=document.activeElement?.tagName?.toLowerCase();
+      const typing=tag==="input"||tag==="textarea"||tag==="select";
+      if((e.metaKey||e.ctrlKey)&&e.key==="k"){e.preventDefault();setSearchOpen(s=>!s);return}
+      if(e.key==="Escape"){setSearchOpen(false);setModal(null);setShowShortcuts(false);setShowSettings(false);return}
+      if(typing)return;
+      if(e.key==="n"||e.key==="N"){e.preventDefault();return}
+      if(e.key==="b"||e.key==="B"){setSidebarOpen(s=>!s);return}
+      if(e.key==="e"||e.key==="E"){exportJSON();return}
+      if(e.key==="m"||e.key==="M"){setSettings(s=>({...s,soundEnabled:!s.soundEnabled}));return}
+      if(e.key==="/"){ e.preventDefault();setSearchOpen(true);return}
+      if(e.key==="?"){setShowShortcuts(s=>!s);return}
+      if(e.key>="1"&&e.key<="7"){const idx=parseInt(e.key)-1;if(idx<VIEW_IDS.length)setView(VIEW_IDS[idx]);return;}
+    };
+    const onUp=(e)=>{
+      const tag=document.activeElement?.tagName?.toLowerCase();
+      const typing=tag==="input"||tag==="textarea"||tag==="select";
+      if(typing)return;
+      if(e.key==="n"||e.key==="N"){setModal({mode:"add",task:emptyTask()});return}
+    };
+    window.addEventListener("keydown",onDown);
+    window.addEventListener("keyup",onUp);
+    return()=>{window.removeEventListener("keydown",onDown);window.removeEventListener("keyup",onUp);};
+  },[tasks]);
+
+  const addTask=(task)=>setTasks(p=>[{...task,id:newId(),createdAt:new Date().toISOString()},...p]);
+  const updateTask=(task)=>setTasks(p=>p.map(tk=>tk.id===task.id?task:tk));
+  const deleteTask=(id)=>setTasks(p=>p.filter(tk=>tk.id!==id));
+
+  const toggleComplete=(id,evt)=>{
+    setTasks(p=>{
+      const updated=p.map(tk=>{
+        if(tk.id!==id)return tk;
+        const nowCompleted=!tk.completed;
+        SoundEngine.play(tk.priority,tk.completed);
+        if(nowCompleted){
+          // XP calculation
+          const onTime=tk.dueDate&&tk.dueDate>=today;
+          const earned=xpForTask(tk.priority,onTime);
+          const oldLevel=getLevel(xp);
+          const newXp=xp+earned;
+          const newLevel=getLevel(newXp);
+          setXp(newXp);
+          // XP popup
+          if(evt){
+            const pop={id:newId(),xp:earned,color:newLevel.color,x:evt.clientX-20,y:evt.clientY-30};
+            setXpPops(pp=>[...pp,pop]);
+            setTimeout(()=>setXpPops(pp=>pp.filter(p=>p.id!==pop.id)),1300);
+          }
+          // Level up toast
+          if(newLevel.title!==oldLevel.title){
+            SoundEngine.playLevelUpFanfare();
+            setLevelUpToast(newLevel);
+          }
+          // Streak
+          const todayD=today;
+          if(lastCompletedDate===todayD){
+            // already counted today
+          } else if(lastCompletedDate){
+            const lastD=new Date(lastCompletedDate+"T00:00:00");
+            const diff=Math.round((new Date(todayD+"T00:00:00")-lastD)/86400000);
+            if(diff===1){
+              const newStreak=streak+1;
+              setStreak(newStreak);
+              if(newStreak===3)setXp(x=>x+50);
+              if(newStreak===7)setXp(x=>x+150);
+            } else if(diff>1){setStreak(1);}
+          } else {setStreak(1);}
+          setLastCompletedDate(todayD);
+          return{...tk,completed:true,completedAt:new Date().toISOString()};
+        } else {
+          return{...tk,completed:false,completedAt:null};
+        }
+      });
+      return updated;
+    });
+  };
+
+  const exportJSON=useCallback(()=>{
+    const blob=new Blob([JSON.stringify({tasks,xp,streak,exportedAt:new Date().toISOString()},null,2)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`worklog-backup-${today}.json`;a.click();
+  },[tasks,xp,streak,today]);
+
+  const importJSON=(e)=>{
+    const file=e.target.files[0];if(!file)return;
+    const r=new FileReader();
+    r.onload=(ev)=>{try{const data=JSON.parse(ev.target.result);if(Array.isArray(data.tasks)){setTasks(data.tasks);if(data.xp)setXp(data.xp);if(data.streak)setStreak(data.streak);alert(`✅ Imported ${data.tasks.length} tasks.`);}else alert("Invalid backup file.");}catch{alert("Could not read file.");}};
+    r.readAsText(file);e.target.value="";
+  };
+
+  const inboxCount=tasks.filter(tk=>!tk.completed).length;
+  const todayCount=tasks.filter(tk=>!tk.completed&&tk.dueDate===today).length;
+  const doneCount=tasks.filter(tk=>tk.completed).length;
+  const catCounts=ALL_CATEGORIES.reduce((a,c)=>{a[c]=tasks.filter(tk=>!tk.completed&&tk.category===c).length;return a},{});
+  const upcomingTasks=useMemo(()=>[...tasks].filter(tk=>!tk.completed&&tk.dueDate&&tk.dueDate>=today).sort((a,b)=>a.dueDate>b.dueDate?1:-1),[tasks,today]);
+
+  const filteredTasks=tasks.filter(tk=>{
+    const mc=filterCat==="All"||tk.category===filterCat;
+    const ms=!search||tk.title.toLowerCase().includes(search.toLowerCase())||tk.category.toLowerCase().includes(search.toLowerCase())||tk.notes?.toLowerCase().includes(search.toLowerCase());
+    return mc&&ms;
+  });
+  const viewTasks=filteredTasks.filter(tk=>{
+    if(view==="inbox")return !tk.completed;
+    if(view==="today")return !tk.completed&&tk.dueDate===today;
+    if(view==="upcoming")return !tk.completed&&tk.dueDate&&tk.dueDate>today;
+    if(view==="sticky")return !tk.completed;
+    if(view==="completed")return tk.completed;
+    return true;
+  });
+
+  const level=getLevel(xp);
+  const nextLevel=LEVELS[LEVELS.indexOf(level)+1];
+  const xpPct=nextLevel?Math.min(100,Math.round((xp-level.min)/(nextLevel.min-level.min)*100)):100;
+
+  const navItems=[
+    {id:"inbox",label:"WorkLog Inbox",icon:"📥",count:inboxCount,key:"1"},
+    {id:"today",label:"Today",icon:"📅",count:todayCount,key:"2"},
+    {id:"upcoming",label:"Upcoming",icon:"📆",count:0,key:"3"},
+    {id:"sticky",label:"Sticky Notes",icon:"📌",count:0,key:"4"},
+    {id:"calendar",label:"Calendar",icon:"🗓",count:0,key:"5"},
+    {id:"progress",label:"My Progress",icon:"📈",count:0,key:"6"},
+    ...(settings.showCompleted?[{id:"completed",label:"Completed",icon:"✅",count:doneCount,key:"7"}]:[]),
+  ];
+  const viewTitles={inbox:"WorkLog Inbox",today:"Today",upcoming:"Upcoming",sticky:"Sticky Notes",calendar:"Calendar",progress:"My Progress",completed:"Completed"};
+
+  // ── Styles ──────────────────────────────────────────────────────────────────
+  const S={
+    app:{display:"flex",height:"100vh",fontFamily:"'DM Sans',system-ui,sans-serif",background:t.bg,color:t.text,overflow:"hidden"},
+    sidebar:{width:sidebarOpen?234:0,minWidth:sidebarOpen?234:0,overflow:"hidden",background:t.sidebar,borderRight:`1px solid ${t.divider}`,display:"flex",flexDirection:"column",transition:"all 0.2s"},
+    navItem:(a)=>({display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:a?600:400,color:a?t.accent:t.text,background:a?(settings.theme==="light"?"#fef2f2":settings.theme==="softdark"?"#2a2840":"#1a0a0a"):"transparent",marginBottom:2,transition:"background 0.12s",userSelect:"none",whiteSpace:"nowrap"}),
+    navBadge:(n)=>({marginLeft:"auto",fontSize:11,fontWeight:600,minWidth:18,background:n>0?t.accent:t.badge,color:n>0?"#fff":t.badgeText,borderRadius:10,padding:"1px 6px",textAlign:"center"}),
+    navKey:{fontSize:10,color:t.textFaint,background:t.hover,borderRadius:3,padding:"1px 4px",marginLeft:2,fontWeight:600},
+    chip:(a)=>({padding:"4px 11px",borderRadius:20,fontSize:12,fontWeight:500,cursor:"pointer",border:`1px solid ${a?t.accent:t.inputBorder}`,background:a?t.accent:t.hover,color:a?"#fff":t.textMuted,transition:"all 0.12s",whiteSpace:"nowrap"}),
+    taskCard:(ov,cp)=>({background:ov?t.overdueBg:t.card,border:`1px solid ${ov?t.stickyHighBorder:t.cardBorder}`,borderRadius:10,padding:"11px 13px",marginBottom:7,display:"flex",gap:10,alignItems:"flex-start",opacity:cp?0.55:1}),
+    checkbox:(done)=>({width:18,height:18,borderRadius:"50%",border:`2px solid ${done?t.accent:t.inputBorder}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2,background:done?t.accent:"transparent",transition:"all 0.15s"}),
+    lbl:{fontSize:11,fontWeight:700,color:t.textMuted,marginBottom:4,display:"block",textTransform:"uppercase",letterSpacing:"0.6px"},
+    input:{width:"100%",padding:"8px 11px",borderRadius:8,border:`1px solid ${t.inputBorder}`,background:t.inputBg,color:t.text,fontSize:13,fontFamily:"inherit",outline:"none"},
+    select:{width:"100%",padding:"8px 11px",borderRadius:8,border:`1px solid ${t.inputBorder}`,background:t.inputBg,color:t.text,fontSize:13,fontFamily:"inherit",outline:"none",cursor:"pointer"},
+    textarea:{width:"100%",padding:"8px 11px",borderRadius:8,border:`1px solid ${t.inputBorder}`,background:t.inputBg,color:t.text,fontSize:13,fontFamily:"inherit",outline:"none",resize:"vertical",minHeight:80},
+    overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(3px)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:40,zIndex:1000,overflowY:"auto"},
+    modalBox:{background:t.card,border:`1px solid ${t.cardBorder}`,borderRadius:14,padding:"24px",width:"100%",maxWidth:500,boxShadow:"0 20px 60px rgba(0,0,0,0.35)",margin:"0 16px 40px"},
+    searchOverlay:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(3px)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:70,zIndex:2000},
+    searchBox:{background:t.card,border:`1px solid ${t.cardBorder}`,borderRadius:14,width:"100%",maxWidth:520,boxShadow:"0 20px 60px rgba(0,0,0,0.4)",overflow:"hidden"},
+    searchInput:{width:"100%",padding:"13px 16px",border:"none",background:"transparent",color:t.text,fontSize:15,outline:"none",fontFamily:"inherit",borderBottom:`1px solid ${t.divider}`},
+    searchRow:{padding:"9px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:9,fontSize:13,borderBottom:`1px solid ${t.divider}`},
+    menuBtn:{padding:"6px 10px",borderRadius:8,background:"none",border:`1px solid ${t.inputBorder}`,color:t.textMuted,fontSize:14,cursor:"pointer",flexShrink:0},
+    addBtn:{padding:"7px 16px",borderRadius:8,background:t.accent,color:"#fff",border:"none",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5,flexShrink:0},
+    empty:{textAlign:"center",padding:"50px 20px",color:t.textFaint},
+  };
+
+  // ── Task Modal ────────────────────────────────────────────────────────────
+  function TaskModal(){
+    const [form,setForm]=useState(modal?.task||emptyTask());
+    const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+    const handleSave=()=>{if(!form.title.trim())return;modal.mode==="add"?addTask(form):updateTask(form);setModal(null);};
+    return(
+      <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setModal(null)} onKeyDown={e=>{if(e.key==="Escape"){e.stopPropagation();setModal(null);}if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();handleSave();}}}>
+        <div style={S.modalBox} className="fade-in">
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+            <div style={{fontSize:17,fontWeight:700,color:t.text}}>{modal.mode==="add"?"Add WorkLog Item":"Edit WorkLog Item"}</div>
+            <div style={{fontSize:11,color:t.textFaint,background:t.hover,padding:"3px 8px",borderRadius:6}}>Ctrl+↵ save</div>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={S.lbl}>Title *</label>
+            <input style={S.input} value={form.title} autoFocus onChange={e=>set("title",e.target.value)} onKeyDown={e=>{if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();handleSave();}}} placeholder="Describe the task..."/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+            <div><label style={S.lbl}>Category</label>
+              <select style={S.select} value={form.category} onChange={e=>set("category",e.target.value)}>
+                {ALL_CATEGORIES.map(c=><option key={c} value={c}>{CAT_ICONS[c]} {c}</option>)}
+              </select>
+            </div>
+            <div><label style={S.lbl}>Priority</label>
+              <select style={S.select} value={form.priority} onChange={e=>set("priority",e.target.value)}>
+                {PRIORITIES.map(p=><option key={p} value={p}>{PRI_COLORS(t)[p].label} {p}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{marginBottom:14}}><label style={S.lbl}>Due Date</label><DatePicker value={form.dueDate} onChange={v=>set("dueDate",v)} theme={t}/></div>
+          <div style={{marginBottom:14}}><label style={S.lbl}>Notes</label><textarea style={S.textarea} value={form.notes} onChange={e=>set("notes",e.target.value)} placeholder="Additional details..."/></div>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:18}}>
+            <button style={{padding:"7px 16px",borderRadius:8,border:`1px solid ${t.inputBorder}`,background:"none",color:t.textMuted,fontSize:13,cursor:"pointer"}} onClick={()=>setModal(null)}>Cancel</button>
+            {modal.mode==="edit"&&<button style={{padding:"7px 16px",borderRadius:8,border:`1px solid ${t.stickyHighBorder}`,background:"none",color:t.overdueText,fontSize:13,cursor:"pointer"}} onClick={()=>{deleteTask(form.id);setModal(null);}}>Delete</button>}
+            <button style={{padding:"7px 18px",borderRadius:8,background:t.accent,color:"#fff",border:"none",fontSize:13,fontWeight:600,cursor:"pointer"}} onClick={handleSave}>{modal.mode==="add"?"Add to WorkLog":"Save Changes"}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Task Card ─────────────────────────────────────────────────────────────
+  function TaskCard({task}){
+    const ov=isOverdue(task.dueDate)&&!task.completed;
+    const pc=PRI_COLORS(t)[task.priority];
+    return(
+      <div style={S.taskCard(ov,task.completed)}>
+        <div style={S.checkbox(task.completed)} onClick={e=>toggleComplete(task.id,e)}>
+          {task.completed&&<span style={{color:"#fff",fontSize:10}}>✓</span>}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:14,fontWeight:500,textDecoration:task.completed?"line-through":"none",color:task.completed?t.textFaint:t.text,marginBottom:3,lineHeight:1.4}}>{task.title}</div>
+          <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
+            <span style={{fontSize:11,fontWeight:500,padding:"2px 7px",borderRadius:10,background:t.badge,color:t.badgeText,border:`1px solid ${t.divider}`}}>{CAT_ICONS[task.category]} {task.category}</span>
+            <span style={{width:7,height:7,borderRadius:"50%",background:pc.border,flexShrink:0}}/>
+            <span style={{fontSize:11,color:pc.text,fontWeight:500}}>{task.priority}</span>
+            {task.dueDate&&<span style={{fontSize:11,color:ov?t.overdueText:t.textFaint,fontWeight:500}}>{ov?"⚠ ":"📅 "}{fmtDate(task.dueDate)}</span>}
+          </div>
+          {task.notes&&<div style={{fontSize:12,color:t.textFaint,marginTop:4,lineHeight:1.4}}>{task.notes}</div>}
+        </div>
+        <button style={{background:"none",border:"none",cursor:"pointer",color:t.textFaint,fontSize:14,padding:"2px 5px",borderRadius:4,marginLeft:"auto",flexShrink:0}} onClick={()=>setModal({mode:"edit",task})}>✎</button>
+      </div>
+    );
+  }
+
+  // ── Inline views ──────────────────────────────────────────────────────────
+  function ViewInbox(){
+    return<>
+      <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:14}}>
+        {["All",...CATEGORIES].map(c=>(
+          <button key={c} style={S.chip(filterCat===c)} onClick={()=>setFilterCat(c)}>
+            {c==="All"?"All":`${CAT_ICONS[c]} ${c}`}{c!=="All"&&catCounts[c]>0&&` (${catCounts[c]})`}
+          </button>
+        ))}
+      </div>
+      {viewTasks.length===0
+        ?<div style={S.empty}><div style={{fontSize:30,marginBottom:10}}>📋</div><div style={{fontSize:14,fontWeight:500}}>WorkLog is empty</div><div style={{fontSize:12,marginTop:5}}>Press <b>N</b> or click "+ Add Item"</div></div>
+        :viewTasks.map(tk=><TaskCard key={tk.id} task={tk}/>)}
+    </>;
+  }
+
+  function ViewToday(){return viewTasks.length===0?<div style={S.empty}><div style={{fontSize:30,marginBottom:10}}>✅</div><div style={{fontSize:14,fontWeight:500}}>Nothing due today!</div></div>:viewTasks.map(tk=><TaskCard key={tk.id} task={tk}/>);}
+
+  function ViewUpcoming(){
+    const sorted=[...viewTasks].sort((a,b)=>a.dueDate>b.dueDate?1:-1);
+    if(sorted.length===0)return<div style={S.empty}><div style={{fontSize:30,marginBottom:10}}>📆</div><div style={{fontSize:14,fontWeight:500}}>No upcoming items</div></div>;
+    let last="";
+    return sorted.map(tk=>{const showHdr=tk.dueDate!==last;if(showHdr)last=tk.dueDate;return<div key={tk.id}>{showHdr&&<div style={{fontSize:11,fontWeight:700,color:t.textFaint,letterSpacing:"1px",textTransform:"uppercase",padding:"8px 0 5px",marginTop:6}}>{fmtDate(tk.dueDate)}</div>}<TaskCard task={tk}/></div>;});
+  }
+
+  function ViewSticky(){
+    const priOrder={High:0,Medium:1,Low:2};
+    const sorted=[...viewTasks].sort((a,b)=>{if(stickySort==="priority"){const pd=priOrder[a.priority]-priOrder[b.priority];if(pd!==0)return pd;if(!a.dueDate&&!b.dueDate)return 0;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate>b.dueDate?1:-1;}else{if(!a.dueDate&&!b.dueDate)return priOrder[a.priority]-priOrder[b.priority];if(!a.dueDate)return 1;if(!b.dueDate)return -1;const dd=a.dueDate>b.dueDate?1:-1;if(dd!==0)return dd;return priOrder[a.priority]-priOrder[b.priority];}});
+    const pinColors={light:{High:"#dc2626",Medium:"#d97706",Low:"#65a30d"},dark:{High:"#ef4444",Medium:"#f59e0b",Low:"#84cc16"},softdark:{High:"#f472b6",Medium:"#fbbf24",Low:"#4ade80"}};
+    const pinC=pinColors[settings.theme];
+    return<>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:18}}>
+        <span style={{fontSize:12,color:t.textMuted,fontWeight:600}}>Sort by:</span>
+        <button style={S.chip(stickySort==="priority")} onClick={()=>setStickySort("priority")}>🎯 Priority</button>
+        <button style={S.chip(stickySort==="duedate")} onClick={()=>setStickySort("duedate")}>📅 Due Date</button>
+        <span style={{marginLeft:"auto",fontSize:12,color:t.textFaint}}>{sorted.length} notes</span>
+      </div>
+      {sorted.length===0?<div style={S.empty}><div style={{fontSize:30,marginBottom:10}}>📌</div><div style={{fontSize:14,fontWeight:500}}>No sticky notes</div></div>
+        :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:18,alignItems:"start"}}>
+          {sorted.map((tk,i)=>{const pc=PRI_COLORS(t)[tk.priority];const ov=isOverdue(tk.dueDate);const rotate=["-1.2deg","0.8deg","-0.5deg","1deg","0.3deg","-0.8deg"][i%6];
+            return<div key={tk.id} className={`sticky-note sticky-${tk.priority.toLowerCase()}`} style={{background:pc.bg,border:`1px solid ${pc.border}`,borderRadius:10,padding:"20px 14px 14px",minHeight:140,display:"flex",flexDirection:"column",cursor:"pointer",transform:`rotate(${rotate})`,boxShadow:`2px 4px 12px ${pc.shadow},0 1px 3px rgba(0,0,0,0.08)`,position:"relative",overflow:"visible"}} onClick={()=>setModal({mode:"edit",task:tk})}>
+              <div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",width:14,height:14,borderRadius:"50%",background:pinC[tk.priority],boxShadow:`0 2px 6px ${pc.shadow}`,zIndex:3,border:"2px solid rgba(255,255,255,0.5)"}}/>
+              <div style={{position:"absolute",top:0,right:0,background:pc.border,color:"#fff",fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:"0 10px 0 8px",letterSpacing:"0.5px",textTransform:"uppercase",opacity:0.85}}>{tk.priority}</div>
+              <div style={{fontSize:13,fontWeight:700,lineHeight:1.45,flex:1,color:t.text,marginBottom:10,paddingRight:12,wordBreak:"break-word",fontStyle:"italic"}}>{tk.title}</div>
+              <div style={{height:1,background:pc.border,opacity:0.35,marginBottom:8}}/>
+              <div style={{fontSize:11,color:t.textMuted,lineHeight:1.6}}>
+                <div style={{marginBottom:2}}>{CAT_ICONS[tk.category]} <span style={{fontWeight:600}}>{tk.category}</span></div>
+                {tk.dueDate?<div style={{color:ov?t.overdueText:t.textMuted,fontWeight:ov?700:400}}>{ov?"⚠ Overdue: ":"📅 "}{fmtDate(tk.dueDate)}</div>:<div style={{color:t.textFaint,fontStyle:"italic"}}>No due date</div>}
+              </div>
+            </div>;
+          })}
+        </div>}
+    </>;
+  }
+
+  function MiniMonth({year,month,onDayClick}){
+    const cells=buildCalDays(year,month);
+    const monthLabel=new Date(year,month,1).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+    return<div style={{marginBottom:20}}>
+      <div style={{fontSize:12,fontWeight:700,color:t.text,marginBottom:8,paddingLeft:2}}>{monthLabel}</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:4}}>
+        {["Mo","Tu","We","Th","Fr","Sa","Su"].map(d=><div key={d} style={{fontSize:9,fontWeight:700,color:t.textFaint,textAlign:"center",padding:"1px 0 4px",textTransform:"uppercase"}}>{d}</div>)}
+        {cells.map((d,i)=>{if(!d)return<div key={`e${i}`}/>;const ds=`${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;const cnt=tasks.filter(tk=>tk.dueDate===ds&&!tk.completed).length;const isTod=ds===today;return<div key={d} style={{padding:"3px 1px",textAlign:"center",borderRadius:5,background:isTod?t.accent:"transparent",cursor:"pointer"}} onClick={()=>onDayClick(ds)}><span style={{fontSize:11,fontWeight:isTod?700:400,color:isTod?"#fff":t.text}}>{d}</span>{cnt>0&&<div style={{width:4,height:4,borderRadius:"50%",background:isTod?"rgba(255,255,255,0.8)":t.accent,margin:"1px auto 0"}}/>}</div>;})}
+      </div>
+    </div>;
+  }
+
+  function ViewCalendar(){
+    const calYear=calDate.getFullYear(),calMonth=calDate.getMonth();
+    const monthName=calDate.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+    const calDays=buildCalDays(calYear,calMonth);
+    const months=[{year:calYear,month:calMonth},{year:calMonth===11?calYear+1:calYear,month:(calMonth+1)%12},{year:calMonth>=10?calYear+1:calYear,month:(calMonth+2)%12}];
+    const handleDayClick=(ds)=>setModal({mode:"add",task:{...emptyTask(),dueDate:ds}});
+
+    const MonthGrid=()=><div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+      {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=><div key={d} style={{fontSize:11,fontWeight:700,color:t.textFaint,textAlign:"center",padding:"3px 0 7px",textTransform:"uppercase",letterSpacing:"0.5px"}}>{d}</div>)}
+      {calDays.map((d,i)=>{if(!d)return<div key={`e${i}`}/>;const ds=`${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;const dayTasks=tasks.filter(tk=>tk.dueDate===ds&&!tk.completed);const isTod=ds===today;return<div key={d} style={{minHeight:70,borderRadius:8,padding:"5px 6px",background:isTod?(settings.theme==="softdark"?"#2a2840":settings.theme==="dark"?"#1a0a0a":"#fff5f5"):t.card,border:`1px solid ${isTod?t.accent:t.cardBorder}`,cursor:"pointer"}} onClick={()=>handleDayClick(ds)}>
+        <div style={{fontSize:11,fontWeight:700,marginBottom:3}}><span style={isTod?{background:t.accent,color:"#fff",borderRadius:"50%",width:20,height:20,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:11}:{color:t.textMuted}}>{d}</span></div>
+        {dayTasks.slice(0,2).map(tk=>{const pc=PRI_COLORS(t)[tk.priority];return<div key={tk.id} style={{fontSize:10,fontWeight:500,color:pc.text,background:pc.bg,border:`1px solid ${pc.border}`,borderRadius:3,padding:"1px 4px",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer"}} onClick={e=>{e.stopPropagation();setModal({mode:"edit",task:tk});}} title={tk.title}>{tk.title}</div>;})}
+        {dayTasks.length>2&&<div style={{fontSize:10,color:t.textFaint}}>+{dayTasks.length-2}</div>}
+      </div>;})}
+    </div>;
+
+    const SplitView=()=>{
+      const grouped=upcomingTasks.reduce((acc,tk)=>{const key=tk.dueDate||"no-date";if(!acc[key])acc[key]=[];acc[key].push(tk);return acc},{});
+      const groupKeys=Object.keys(grouped).sort();
+      return<div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:24,height:"calc(100vh - 140px)"}}>
+        <div style={{overflowY:"auto",paddingRight:8}}>{months.map(({year,month})=><MiniMonth key={`${year}-${month}`} year={year} month={month} onDayClick={handleDayClick}/>)}</div>
+        <div style={{overflowY:"auto"}}>
+          <div style={{fontSize:14,fontWeight:700,marginBottom:14,color:t.text,display:"flex",alignItems:"center",gap:6}}>🗓 Upcoming Tasks <span style={{fontSize:11,color:t.textFaint,fontWeight:400,marginLeft:4}}>{upcomingTasks.length} items</span></div>
+          {groupKeys.length===0&&<div style={{color:t.textFaint,fontSize:13,padding:"20px 0"}}>No upcoming tasks — click any date to add one</div>}
+          {groupKeys.map(key=><div key={key} style={{marginBottom:16}}>
+            <div style={{fontSize:10,fontWeight:800,color:t.textFaint,letterSpacing:"1.2px",textTransform:"uppercase",padding:"6px 0",borderBottom:`1px solid ${t.divider}`,marginBottom:6}}>{fmtDate(key)}</div>
+            {grouped[key].map(tk=>{const pc=PRI_COLORS(t)[tk.priority];return<div key={tk.id} className="upcoming-item" style={{background:t.card,borderLeftColor:pc.border}} onClick={()=>setModal({mode:"edit",task:tk})}>
+              <button className="xi" style={{color:t.accent,fontWeight:700}} onClick={e=>{e.stopPropagation();toggleComplete(tk.id,e);}}>✓</button>
+              <div style={{fontSize:13,fontWeight:600,paddingRight:24,color:t.text,marginBottom:2}}>{tk.title}</div>
+              <div style={{fontSize:11,color:t.textMuted}}>{CAT_ICONS[tk.category]} {tk.category} · {pc.label} {tk.priority}</div>
+            </div>;})}
+          </div>)}
+        </div>
+      </div>;
+    };
+
+    return<>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,flexWrap:"wrap"}}>
+        <button style={S.menuBtn} onClick={()=>setCalDate(d=>new Date(d.getFullYear(),d.getMonth()-1,1))}>◀</button>
+        <span style={{fontSize:15,fontWeight:700,flex:1}}>{monthName}</span>
+        <button style={S.menuBtn} onClick={()=>setCalDate(d=>new Date(d.getFullYear(),d.getMonth()+1,1))}>▶</button>
+        <button style={S.chip(false)} onClick={()=>setCalDate(new Date())}>Today</button>
+        <div style={{display:"flex",background:t.hover,borderRadius:8,padding:2,border:`1px solid ${t.inputBorder}`}}>
+          <button style={{...S.chip(calView==="month"),border:"none",borderRadius:6,fontSize:12}} onClick={()=>setCalView("month")}>📅 Month</button>
+          <button style={{...S.chip(calView==="split"),border:"none",borderRadius:6,fontSize:12}} onClick={()=>setCalView("split")}>⊟ Split</button>
+        </div>
+        <button style={S.addBtn} onClick={()=>setModal({mode:"add",task:emptyTask()})}>+ Add Item</button>
+      </div>
+      <div style={{fontSize:11,color:t.textFaint,marginBottom:12}}>💡 Click any day to add a task on that date</div>
+      {calView==="month"?<MonthGrid/>:<SplitView/>}
+    </>;
+  }
+
+  function ViewCompleted(){return viewTasks.length===0?<div style={S.empty}><div style={{fontSize:30,marginBottom:10}}>🏁</div><div style={{fontSize:14,fontWeight:500}}>No completed items yet</div></div>:viewTasks.map(tk=><TaskCard key={tk.id} task={tk}/>);}
+
+  const searchResults=search.trim()?tasks.filter(tk=>tk.title.toLowerCase().includes(search.toLowerCase())||tk.category.toLowerCase().includes(search.toLowerCase())).slice(0,8):[];
+
+  // ── RENDER ────────────────────────────────────────────────────────────────
+  return(
+    <div style={S.app}>
+      {/* XP Popups */}
+      {xpPops.map(p=><XPPopup key={p.id} {...p}/>)}
+      {levelUpToast&&<LevelUpToast level={levelUpToast} onDone={()=>setLevelUpToast(null)}/>}
+
+      {/* Sidebar */}
+      <div style={S.sidebar}>
+        {/* Logo — editable on click */}
+        <div style={{padding:"16px 14px 10px",borderBottom:`1px solid ${t.divider}`}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{cursor:"pointer"}} onClick={()=>setShowSettings(true)}>
+              <div style={{fontSize:16,fontWeight:700,letterSpacing:"-0.5px",color:t.text,display:"flex",alignItems:"center",gap:6}}>
+                <span>⚡</span>{settings.appName||"WorkLog"}
+              </div>
+              <div style={{fontSize:10,color:t.textFaint,marginTop:1,letterSpacing:"0.5px",textTransform:"uppercase"}}>{settings.appSubtitle||"Work Task Manager"}</div>
+            </div>
+            <button onClick={()=>setShowSettings(true)} title="Settings" style={{background:"none",border:"none",cursor:"pointer",color:t.textFaint,fontSize:15,padding:"4px",borderRadius:6,flexShrink:0}}>⚙️</button>
+          </div>
+
+          {/* XP bar under logo */}
+          <div style={{marginTop:10,padding:"8px 10px",background:t.hover,borderRadius:8,border:`1px solid ${t.divider}`}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                <span style={{fontSize:14}}>{level.badge}</span>
+                <span style={{fontSize:11,fontWeight:700,color:level.color}}>{level.title}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:11,color:t.textFaint}}>🔥 {streak}d</span>
+                <span style={{fontSize:11,fontWeight:700,color:t.accent}}>{xp} XP</span>
+              </div>
+            </div>
+            <div style={{height:5,background:t.divider,borderRadius:3,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${xpPct}%`,background:level.color,borderRadius:3,transition:"width 0.6s"}}/>
+            </div>
+          </div>
+        </div>
+
+        {/* Nav */}
+        <div style={{flex:1,overflowY:"auto",padding:"10px 10px 0"}}>
+          {!settings.focusMode&&(
+            <div style={{fontSize:10,fontWeight:700,color:t.textFaint,letterSpacing:"1px",textTransform:"uppercase",padding:"0 8px 5px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span>WorkLog List</span>
+              <button onClick={()=>setSettings(s=>({...s,showBadges:!s.showBadges}))} title="Toggle badges" style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:t.textFaint,opacity:settings.showBadges?1:0.4}}>🔢</button>
+            </div>
+          )}
+          {navItems.map(n=>(
+            <div key={n.id} style={S.navItem(view===n.id)} onClick={()=>setView(n.id)}>
+              <span style={{fontSize:13}}>{n.icon}</span>
+              <span style={{flex:1}}>{n.label}</span>
+              {!settings.focusMode&&<span style={S.navKey}>{n.key}</span>}
+              {settings.showBadges&&(n.count>0||(n.id==="completed"&&doneCount>0))&&<span style={S.navBadge(n.count)}>{n.count}</span>}
+            </div>
+          ))}
+
+          {/* Categories */}
+          {!settings.focusMode&&CATEGORIES.length>0&&(
+            <div style={{marginTop:8}}>
+              <div style={{fontSize:10,fontWeight:700,color:t.textFaint,letterSpacing:"1px",textTransform:"uppercase",padding:"0 8px 5px"}}>Categories</div>
+              {CATEGORIES.map(c=>(
+                <div key={c} style={{...S.navItem(false),fontSize:12}} onClick={()=>{setView("inbox");setFilterCat(c);}}>
+                  <span>{CAT_ICONS[c]}</span>
+                  <span style={{flex:1}}>{c}</span>
+                  {settings.showBadges&&catCounts[c]>0&&<span style={S.navBadge(catCounts[c])}>{catCounts[c]}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom */}
+        {!settings.focusMode&&(
+          <div style={{padding:"10px",borderTop:`1px solid ${t.divider}`}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,padding:"6px 10px",borderRadius:8,background:t.hover,border:`1px solid ${t.inputBorder}`}}>
+              <span style={{fontSize:11,color:t.textMuted,fontWeight:600}}>🔊 Sounds</span>
+              <div onClick={()=>setSettings(s=>({...s,soundEnabled:!s.soundEnabled}))} style={{width:36,height:20,borderRadius:10,background:settings.soundEnabled?t.accent:t.inputBorder,cursor:"pointer",position:"relative",transition:"background 0.2s"}}>
+                <div style={{position:"absolute",top:2,left:settings.soundEnabled?18:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/>
+              </div>
+            </div>
+            {settings.showImportExport&&<>
+              <button style={{width:"100%",padding:"6px 10px",borderRadius:7,fontSize:12,fontWeight:500,cursor:"pointer",border:`1px solid ${t.inputBorder}`,background:t.hover,color:t.textMuted,marginBottom:5,textAlign:"left"}} onClick={exportJSON}>⬇ Export Backup <span style={{float:"right",opacity:0.5}}>E</span></button>
+              <button style={{width:"100%",padding:"6px 10px",borderRadius:7,fontSize:12,fontWeight:500,cursor:"pointer",border:`1px solid ${t.inputBorder}`,background:t.hover,color:t.textMuted,marginBottom:5,textAlign:"left"}} onClick={()=>fileRef.current.click()}>⬆ Import Backup</button>
+              <input ref={fileRef} type="file" accept=".json" style={{display:"none"}} onChange={importJSON}/>
+            </>}
+            <div style={{fontSize:10,color:t.textFaint,textAlign:"center",marginTop:4}}>Data saved in this browser</div>
+          </div>
+        )}
+      </div>
+
+      {/* Main */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+        <div style={{padding:"14px 20px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${t.divider}`,background:t.bg,flexShrink:0}}>
+          <button style={S.menuBtn} onClick={()=>setSidebarOpen(s=>!s)}>☰</button>
+          <div style={{fontSize:20,fontWeight:700,letterSpacing:"-0.5px",flex:1}}>{viewTitles[view]}</div>
+          <button style={{padding:"6px 12px",borderRadius:8,background:t.hover,color:t.textMuted,border:`1px solid ${t.inputBorder}`,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:5,flexShrink:0}} onClick={()=>setSearchOpen(true)}>🔍 Search <span style={{opacity:0.4,fontSize:11}}>Ctrl+K</span></button>
+          {view!=="completed"&&view!=="calendar"&&view!=="progress"&&(
+            <button style={S.addBtn} onClick={()=>setModal({mode:"add",task:emptyTask()})}>+ Add Item <span style={{opacity:0.7,fontSize:11,background:"rgba(255,255,255,0.2)",padding:"1px 5px",borderRadius:4}}>N</span></button>
+          )}
+          <button onClick={()=>setShowSettings(true)} title="Settings" style={{...S.menuBtn,fontSize:15}}>⚙️</button>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"18px 20px"}}>
+          {view==="inbox"    &&<ViewInbox/>}
+          {view==="today"    &&<ViewToday/>}
+          {view==="upcoming" &&<ViewUpcoming/>}
+          {view==="sticky"   &&<ViewSticky/>}
+          {view==="calendar" &&<ViewCalendar/>}
+          {view==="progress" &&<ViewProgress tasks={tasks} xp={xp} streak={streak} theme={t}/>}
+          {view==="completed"&&<ViewCompleted/>}
+        </div>
+      </div>
+
+      {modal&&<TaskModal/>}
+      {showShortcuts&&<ShortcutsHelp theme={t} onClose={()=>setShowShortcuts(false)}/>}
+      {showSettings&&<SettingsPanel settings={settings} onUpdate={(s)=>{setSettings(s);SoundEngine.enabled=s.soundEnabled;}} onClose={()=>setShowSettings(false)} theme={t}/>}
+
+      {/* Search */}
+      {searchOpen&&(
+        <div style={S.searchOverlay} onClick={e=>e.target===e.currentTarget&&(setSearchOpen(false),setSearch(""))}>
+          <div style={S.searchBox} className="fade-in">
+            <input style={S.searchInput} autoFocus placeholder="Search WorkLog items..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            {search&&searchResults.length===0&&<div style={{padding:"14px 16px",color:t.textFaint,fontSize:13}}>No results found</div>}
+            {searchResults.map(tk=>(
+              <div key={tk.id} style={S.searchRow} onMouseEnter={e=>e.currentTarget.style.background=t.hover} onMouseLeave={e=>e.currentTarget.style.background="transparent"} onClick={()=>{setModal({mode:"edit",task:tk});setSearchOpen(false);setSearch("");}}>
+                <span>{CAT_ICONS[tk.category]}</span>
+                <span style={{flex:1,fontWeight:500}}>{tk.title}</span>
+                <span style={{fontSize:11,color:t.textFaint}}>{tk.category}</span>
+                {tk.dueDate&&<span style={{fontSize:11,color:isOverdue(tk.dueDate)?t.overdueText:t.textFaint}}>{fmtDate(tk.dueDate)}</span>}
+              </div>
+            ))}
+            {!search&&(
+              <div style={{padding:"10px 16px 12px"}}>
+                <div style={{fontSize:10,color:t.textFaint,marginBottom:7,textTransform:"uppercase",letterSpacing:"0.5px",fontWeight:700}}>Quick navigate</div>
+                {navItems.map(n=>(
+                  <div key={n.id} style={S.searchRow} onMouseEnter={e=>e.currentTarget.style.background=t.hover} onMouseLeave={e=>e.currentTarget.style.background="transparent"} onClick={()=>{setView(n.id);setSearchOpen(false);}}>
+                    <span>{n.icon}</span><span style={{flex:1,fontWeight:500}}>Go to {n.label}</span><span style={S.navKey}>{n.key}</span>
+                  </div>
+                ))}
+                <div style={{padding:"8px 0 0",display:"flex",gap:8}}>
+                  <button style={{...S.chip(false),fontSize:11}} onClick={()=>{setShowShortcuts(true);setSearchOpen(false);}}>⌨️ Shortcuts</button>
+                  <button style={{...S.chip(false),fontSize:11}} onClick={()=>{setShowSettings(true);setSearchOpen(false);}}>⚙️ Settings</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
